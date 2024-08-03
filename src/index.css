@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    @apply min-w-[350px] min-h-[450px] bg-kori-bg text-kori-text
+}

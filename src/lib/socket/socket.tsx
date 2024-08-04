@@ -29,7 +29,7 @@ const parseSockMsg = (data: string, socket: WebSocket | null) => {
 		} else if (
 			data.includes(BE_RIGHT_BACK)
 		) {
-			console.log('[+] She will be right back, check for a flip here...');
+			console.log('[+] Kori will be right back, all-in on a random side of the coin');
             // logic ...
 		}
 	} else {

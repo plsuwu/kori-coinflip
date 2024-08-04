@@ -1,5 +1,6 @@
 import { createSignal, onMount, type Component } from "solid-js";
 import { Toggle } from "./lib/components/Toggle";
+import { Auth } from "./lib/components/Auth";
 
 const App: Component = () => {
     const textOptions = [
@@ -8,6 +9,8 @@ const App: Component = () => {
     ];
     const [enabled, setEnabled] = createSignal(false);
     const [text, setText] = createSignal(textOptions[0]);
+    const [auth, setAuth] = createSignal(undefined);
+    const [username, setUsername] = createSignal<string | undefined>(undefined);
 
 
     onMount(() => {
@@ -16,7 +19,28 @@ const App: Component = () => {
                 setEnabled(result.enabled);
             }
         });
+
+        chrome.storage.local.get(['oauth_token'], (result) => {
+            if (result.oauth_token !== undefined) {
+                setAuth(result.oauth_token);
+            }
+        });
+
+        chrome.storage.local.get(['user_info'], (result) => {
+            if (result.user_info) {
+                const uname = result.user_info.login;
+                setUsername(uname);
+            }
+        });
+
     });
+
+    const clearToken = () => {
+        chrome.storage.local.remove(['oauth_token']);
+        chrome.storage.local.remove(['user_info']);
+        setAuth(undefined);
+        setUsername(undefined);
+    }
 
     const toggle = () => {
         // flip true/false state
@@ -32,6 +56,19 @@ const App: Component = () => {
     };
 
 	return (
+        <>
+        {!auth() && (
+        <div>
+            <Auth />
+        </div>
+        )}
+        {username() && (
+            <div class='flex flex-row justify-between items-start m-1'>
+                <div>omg hiii <a href={`https://twitch.tv/${username()}`} target='_blank' class='bg-kori-light-blue/40 px-0.5 py-px rounded-md'>@{username()}</a></div>
+                <button class='text-[0.7rem] hover:bg-kori-light-blue/30 hover:text-kori-text/75 transition-colors duration-300 ease-in-out px-0.5 py-px border-kori-light-blue border rounded-md'
+ onclick={clearToken}>log out</button>
+            </div>
+        )}
 		<div>
 			<div class='flex flex-col items-center justify-center text-xl font-semibold'>
 				<div class='my-8'>kori coinflip</div>
@@ -40,6 +77,7 @@ const App: Component = () => {
 
 			</div>
 		</div>
+        </>
 	);
 };
 

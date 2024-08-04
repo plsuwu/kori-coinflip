@@ -39,7 +39,7 @@ const manifest = defineManifest(async () => ({
 	name: 'kori coinflip',
 	version: '0.1.0',
 	background: { service_worker: 'src/lib/worker.tsx' },
-    permissions: [ "storage" ],
+    permissions: [ "storage", "identity" ],
 	action: {
 		default_popup: 'index.html',
 		default_icon: 'public/kori.png',

@@ -39,12 +39,12 @@ const App: Component = () => {
     const clearToken = () => {
         // this check should ensure our token is defined before trying to
         // revoke it
-        revoke(auth() as string);
+        // revoke(token);
 
-        chrome.storage.local.remove(['oauth_token']);
+        setUsername(undefined);
         chrome.storage.local.remove(['user_info']);
         setAuth(undefined);
-        setUsername(undefined);
+        chrome.storage.local.remove(['oauth_token']);
     }
 
     const toggle = () => {
@@ -71,7 +71,7 @@ const App: Component = () => {
             <div class='flex flex-row justify-between items-start m-1'>
                 <div>omg hiii <a href={`https://twitch.tv/${username()}`} target='_blank' class='bg-kori-light-blue/40 px-0.5 py-px rounded-md'>@{username()}</a></div>
                 <button class='text-[0.7rem] hover:bg-kori-light-blue/30 hover:text-kori-text/75 transition-colors duration-300 ease-in-out px-0.5 py-px border-kori-light-blue border rounded-md'
- onclick={clearToken}>log out</button>
+ onclick={() => clearToken()}>log out</button>
             </div>
         )}
 		<div>

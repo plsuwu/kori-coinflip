@@ -1,6 +1,7 @@
 import { createSignal, onMount, type Component } from "solid-js";
 import { Toggle } from "./lib/components/Toggle";
 import { Auth } from "./lib/components/Auth";
+import { revoke } from "./lib/worker";
 
 const App: Component = () => {
     const textOptions = [
@@ -9,7 +10,7 @@ const App: Component = () => {
     ];
     const [enabled, setEnabled] = createSignal(false);
     const [text, setText] = createSignal(textOptions[0]);
-    const [auth, setAuth] = createSignal(undefined);
+    const [auth, setAuth] = createSignal<string | undefined>(undefined);
     const [username, setUsername] = createSignal<string | undefined>(undefined);
 
 
@@ -36,6 +37,10 @@ const App: Component = () => {
     });
 
     const clearToken = () => {
+        // this check should ensure our token is defined before trying to
+        // revoke it
+        revoke(auth() as string);
+
         chrome.storage.local.remove(['oauth_token']);
         chrome.storage.local.remove(['user_info']);
         setAuth(undefined);

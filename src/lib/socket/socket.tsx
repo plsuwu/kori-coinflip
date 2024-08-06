@@ -15,10 +15,9 @@ const templ = [
 	`JOIN #${JOIN}`,
 ];
 
-const KEEPALIVE_PING = 'PING :tmi.twitch.tv';
-
 // maybe dont hardcode this but ultimately who care
 const BE_RIGHT_BACK = ':kori!kori@kori.tmi.twitch.tv PRIVMSG #kori :!brb';
+const KEEPALIVE_PING = 'PING :tmi.twitch.tv';
 
 const parseSockMsg = (data: string, socket: WebSocket | null) => {
 	// console.log('[+] reading incoming data:', data);
@@ -69,6 +68,7 @@ export const openWebsocket = () => {
 		console.error('[-] >> Websocket error =>', err);
 	};
 };
+
 
 export const closeWebsocket = () => {
 	if (socket) {

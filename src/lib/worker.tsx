@@ -1,23 +1,32 @@
 import { createSignal } from 'solid-js';
-import { NICK, PASS, JOIN } from './socket/debug';
 import { openWebsocket, closeWebsocket } from './socket/socket';
 
 const VALIDATE_URL = 'https://id.twitch.tv/oauth2/validate';
 const REVOKE_URL = 'https://id.twitch.tv/oauth2/revoke';
 const CLIENT_ID = 'hzjlx3hy3h0f863czefkivrlfs3f6a';
 
+export interface UserInfo {
+	client_id: string;
+	expires_in: number;
+	login: string;
+	scopes: string[];
+	user_id: string;
+}
+
+export const [oauth, setOauth] = createSignal<string>('');
+export const [nickname, setNickname] = createSignal<UserInfo | string>('');
+
 chrome.runtime.onInstalled.addListener(() => {
 	// if `enabled` is undefined in localstorage, init with `false`
 	chrome.storage.local.get(['enabled'], (res) => {
-		if (res.enabled === undefined) {
+		if (res.enabled == null) {
 			chrome.storage.local.set({ enabled: false });
 		} else if (res.enabled) {
-			openWebsocket();
+			const auth = { user_info: nickname() as UserInfo, token: oauth() };
+			openWebsocket(auth);
 		}
 	});
 });
-
-const [oauth, setOauth] = createSignal<string>('');
 
 export const revoke = async (token: string) => {
 	// curl -X POST 'https://id.twitch.tv/oauth2/revoke' \
@@ -35,9 +44,9 @@ export const revoke = async (token: string) => {
 		}),
 	});
 
-    console.log('[-] Attempting to revoke token: ', token);
+	console.log('[-] Attempting to revoke token: ', token);
 
-	const res = revoked;
+	const res = revoked; // double defl llmao
 	if (revoked.status !== 200) {
 		console.log('[-] There was an issue revoking an access token:', res);
 
@@ -71,6 +80,53 @@ export const verify = async (token: string) => {
 	chrome.storage.local.set({ user_info: data, valid: true });
 };
 
+export const debugClicker = async () => {
+	chrome.tabs.query({}, (tabs) => {
+		tabs.forEach((t) => {
+			if (t.url === 'https://www.twitch.tv/kori') {
+				console.log('[*] kori tab found:', t);
+
+				if (!t.id) {
+					console.error(
+						"[?] Found a kori tab but the tab's id could not be found."
+					);
+					return;
+				}
+
+				chrome.tabs.sendMessage(t.id, { action: 'predict' }, (res) => {
+					if (chrome.runtime.lastError) {
+						console.error(
+							'Error sending message:',
+							chrome.runtime.lastError
+						);
+						return;
+					}
+
+					if (res.status === 'complete') {
+						chrome.storage.local.get(['favors'], (result) => {
+							console.log('Favors:', result.favors);
+						});
+					} else if (res.status === 'error') {
+						console.error('Predict error:', res.message);
+					}
+				});
+			}
+		});
+	});
+};
+
+chrome.action.onClicked.addListener((tab) => {
+	if (!tab.id) {
+		console.error('[?] No tab valid tab id found');
+		return;
+	}
+
+	chrome.scripting.executeScript({
+		target: { tabId: tab.id },
+		files: ['coin-logic.tsx'],
+	});
+});
+
 chrome.storage.onChanged.addListener((changes, loc) => {
 	if (loc === 'local') {
 		// if the `enabled` state is changed
@@ -78,7 +134,16 @@ chrome.storage.onChanged.addListener((changes, loc) => {
 			if (changes.enabled.newValue) {
 				// enabled => start a websocket client
 				console.log('[+] Ext. enabled, activate worker tasks:');
-				openWebsocket();
+				const nick = nickname();
+				const token = oauth();
+
+				console.log(token, nick);
+
+				const auth = {
+					user_info: nickname() as UserInfo,
+					token: oauth(),
+				};
+				openWebsocket(auth);
 			} else {
 				// disabled => kill any active websocket clients
 				console.log('[-] Ext. disabled, kill worker tasks:');
@@ -96,7 +161,7 @@ chrome.storage.onChanged.addListener((changes, loc) => {
 					const token_string = `OAuth ${result.oauth_token}`;
 					verify(token_string);
 
-                    setOauth(result.oauth_token);
+					setOauth(result.oauth_token);
 				}
 			});
 		}
@@ -106,12 +171,15 @@ chrome.storage.onChanged.addListener((changes, loc) => {
 			chrome.storage.local.get(['user_info'], (result) => {
 				console.log(
 					'[debug] Changed `user_info`, now set to:',
-					result.user_info, oauth()
-                );
+					result.user_info,
+					oauth()
+				);
 
-                if (result.user_info === undefined && oauth() !== undefined) {
-                    revoke(oauth());
-                }
+				if (result.user_info === undefined && oauth() !== undefined) {
+					revoke(oauth());
+				} else if (result.user_info) {
+					setNickname(result.user_info);
+				}
 			});
 		}
 	}

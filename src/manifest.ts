@@ -12,7 +12,7 @@ interface Manifest {
 	description?: string | undefined;
 	icons?: chrome.runtime.ManifestIcons | undefined;
 	action?: chrome.runtime.ManifestAction | undefined;
-    permissions?: string[] | undefined;
+	permissions?: string[] | undefined;
 	background?:
 		| {
 				service_worker: string;
@@ -39,16 +39,23 @@ const manifest = defineManifest(async () => ({
 	name: 'kori coinflip',
 	version: '0.1.0',
 	background: { service_worker: 'src/lib/worker.tsx' },
-    permissions: [ "storage", "identity" ],
+	permissions: ['storage', 'identity', 'tabs', 'scripting'],
+	host_permissions: [
+		'http://twitch.tv/*',
+		'http://twitch.tv/kori',
+		'https://twitch.tv/kori',
+	],
+
 	action: {
 		default_popup: 'index.html',
 		default_icon: 'public/kori.png',
-	}
-	// content_scripts: [
-	// 	{
-	// 		matches: ['http://*/*', 'https://*/*', '<all_urls>'],
-	// 		js: ['src/lib/util/persist.tsx'],
-	// 	},
+	},
+	content_scripts: [
+		{
+			matches: ['https://www.twitch.tv/kori'],
+			js: ['./src/lib/socket/coin-logic.tsx'],
+		}
+    ]
 	// 	{
 	// 		matches: ['https://twitch.tv/kori'],
 	// 		js: ['src/lib/util/socket.tsx'],

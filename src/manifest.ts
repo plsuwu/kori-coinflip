@@ -42,8 +42,10 @@ const manifest = defineManifest(async () => ({
 	permissions: ['storage', 'identity', 'tabs', 'scripting'],
 	host_permissions: [
 		'http://twitch.tv/*',
+		'https://twitch.tv/*',
 		'http://twitch.tv/kori',
 		'https://twitch.tv/kori',
+		'https://twitch.tv/tobs',
 	],
 
 	action: {
@@ -52,10 +54,13 @@ const manifest = defineManifest(async () => ({
 	},
 	content_scripts: [
 		{
-			matches: ['https://www.twitch.tv/kori'],
+			matches: [
+				'https://www.twitch.tv/tobs',
+				'https://www.twitch.tv/kori',
+			],
 			js: ['./src/lib/socket/coin-logic.tsx'],
-		}
-    ]
+		},
+	],
 	// 	{
 	// 		matches: ['https://twitch.tv/kori'],
 	// 		js: ['src/lib/util/socket.tsx'],

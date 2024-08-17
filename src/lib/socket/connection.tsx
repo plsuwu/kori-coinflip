@@ -1,6 +1,6 @@
-import { createSignal, onMount } from "solid-js";
 import { nickname, oauth } from "../worker";
 import type { UserInfo } from '../worker';
+import WebSocketUtil from "./websocket_util";
 
 // CAP REQ :twitch.tv/tags twitch.tv/commands
 // PASS oauth:{auth}
@@ -8,19 +8,21 @@ import type { UserInfo } from '../worker';
 // USER {nick} 8 * :{nick}
 // JOIN #{join}
 
-// const [nick, setNick] = createSignal<string>('');
-
 interface AuthInfo {
     user_info: UserInfo,
     token: string,
 }
 
-const JOIN = 'kori';
-let socket: WebSocket | null = null;
-
-// maybe dont hardcode this but ultimately who care
-const BE_RIGHT_BACK = ':kori!kori@kori.tmi.twitch.tv PRIVMSG #kori :!brb';
+const JOIN = 'kori';                                                       // this could be a let
+const BE_RIGHT_BACK = ':kori!kori@kori.tmi.twitch.tv PRIVMSG #kori :!brb'; // this could be templated
 const KEEPALIVE_PING = 'PING :tmi.twitch.tv';
+
+const ws = WebSocketUtil.initial();
+
+
+
+
+/*
 
 const parseSockMsg = (data: string, socket: WebSocket | null) => {
 	// console.log('[+] reading incoming data:', data);
@@ -99,3 +101,5 @@ export const closeWebsocket = () => {
 		console.log('[-] Websocket is null, nothing to close.');
 	}
 };
+
+*/

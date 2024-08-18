@@ -1,10 +1,10 @@
 import { createSignal, onMount, type Component } from 'solid-js';
-import { debugGramble } from './lib/worker';
+import { gramble } from './lib/worker';
 
 
 const App: Component = () => {
     const runDebugGramble = () => {
-        debugGramble();
+        gramble();
     }
 
 	return (

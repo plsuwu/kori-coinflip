@@ -15,52 +15,43 @@ chrome.runtime.onInstalled.addListener(() => {
 	chrome.storage.local.set({ enabled: false });
 });
 
-export const debugGramble = async () => {
+export const gramble = async () => {
 	chrome.tabs.query({}, (tabs) => {
 		tabs.forEach((t) => {
 			if (t.url === 'https://www.twitch.tv/tobs') {
-				console.log('[+] kori tab found:', t);
+				console.log('[+] Kori tab found:', t);
 
 				if (!t.id) {
-					console.error(
-						"[!] Found a kori tab but the tab's id could not be found."
-					);
+					console.error("[!] Unable to fetch the ID of Kori's tab.");
 					return;
 				}
 
 				chrome.tabs.sendMessage(t.id, { action: 'predict' }, (res) => {
 					if (chrome.runtime.lastError) {
-						console.error(
-							'Error sending message:',
-							chrome.runtime.lastError
-						);
+						console.error('Error sending message:', chrome.runtime.lastError);
 						return;
 					}
 
 					if (res.status === 'complete') {
-						chrome.storage.local.get(['favors'], (result) => {
-							console.log('Favors:', result.favors);
-						});
+						console.log('[+] Gramble observer chain completed without issue.');
+						return;
 					} else if (res.status === 'error') {
-						console.error('Predict error:', res.message);
+						console.error(
+							'[-] Gramble observer chain encountered an issue and returned without completing:',
+							res.message
+						);
+						return;
+					} else {
+						console.error(
+							'[-] Idk what happened but we fell all the way through (maybe cry about it).'
+						);
+						return;
 					}
 				});
 			}
 		});
 	});
 };
-
-// chrome.action.onClicked.addListener((tab) => {
-// 	if (!tab.id) {
-// 		console.error('[!] No tab valid tab id found');
-// 		return;
-// 	}
-//
-// 	chrome.scripting.executeScript({
-// 		target: { tabId: tab.id },
-// 		files: ['coin-logic.tsx'],
-// 	});
-// });
 
 chrome.storage.onChanged.addListener((changes, loc) => {
 	if (loc === 'local') {

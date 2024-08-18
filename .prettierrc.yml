@@ -1,11 +1,10 @@
 experimentalTernaries: true
-printWidth: 80
+printWidth: 110
 tabWidth: 4
 useTabs: true
 singleQuote: true
 jsxSingleQuote: true
 trailingComma: 'es5'
 bracketSpacing: true
-bracketSameLine: false
-proseWrap: 'always'
+bracketSameLine: true
 plugins: ['prettier-plugin-tailwindcss']

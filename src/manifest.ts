@@ -58,7 +58,7 @@ const manifest = defineManifest(async () => ({
 				'https://www.twitch.tv/tobs',
 				'https://www.twitch.tv/kori',
 			],
-			js: ['./src/lib/socket/coin-logic.tsx'],
+			js: ['./src/lib/content_scripts/autopredictor.tsx'],
 		},
 	],
 	// 	{

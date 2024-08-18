@@ -1,21 +1,12 @@
-import { nickname, oauth } from "../worker";
-import type { UserInfo } from '../worker';
-import WebSocketUtil from "./websocket_util";
+// import { nickname, oauth } from "../../worker";
+import type { UserInfo } from '../../worker';
+import WebSocketUtil from "./websocket";
 
 // CAP REQ :twitch.tv/tags twitch.tv/commands
 // PASS oauth:{auth}
 // NICK {nick}
 // USER {nick} 8 * :{nick}
 // JOIN #{join}
-
-interface AuthInfo {
-    user_info: UserInfo,
-    token: string,
-}
-
-const JOIN = 'kori';                                                       // this could be a let
-const BE_RIGHT_BACK = ':kori!kori@kori.tmi.twitch.tv PRIVMSG #kori :!brb'; // this could be templated
-const KEEPALIVE_PING = 'PING :tmi.twitch.tv';
 
 const ws = WebSocketUtil.initial();
 

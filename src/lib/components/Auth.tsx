@@ -1,49 +1,45 @@
 import { Component, createSignal, onMount } from 'solid-js';
+import { UserData } from '../../App';
 
-// https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/
-//
-// https://kabldnfpbfcdkbhbolpdbbppiendepjj.chromiumapp.org/ttv_callback#access_token=zvoe4bde7kdc396ssr0y5u67kjj9ee&scope=chat%3Aread&token_type=bearer
+interface Props {
+    token: string;
+    user: UserData;
+    loading: boolean;
+    logout: () => void;
+    fetchToken: () => void;
+}
 
-export const Auth: Component = () => {
-	chrome.storage.local.get(['oauth_token'], (res) => {
-		if (res.oauth_token !== undefined) {
-			console.log('[+] Token (DEBUG ONL): ', res.oauth_token);
-		}
-	});
-
+export const Auth: Component<Props> = (props: Props) => {
 	// const VALIDATE_URL = 'https://id.twitch.tv/oauth2/validate';
-	const CLIENT_ID = 'hzjlx3hy3h0f863czefkivrlfs3f6a';
-	const CALLBACK_URI =
-		'https://kabldnfpbfcdkbhbolpdbbppiendepjj.chromiumapp.org/ttv_callback';
-	const RES_TYPE = 'token';
-	const AUTH_SCOPE = 'chat%3Aread';
 
-	const fetchToken = () => {
-		const uri = `https://id.twitch.tv/oauth2/authorize?force_verify=true&response_type=${RES_TYPE}&client_id=${CLIENT_ID}&redirect_uri=${CALLBACK_URI}&scope=${AUTH_SCOPE}`;
-		chrome.identity.launchWebAuthFlow(
-			{ url: uri, interactive: true },
-			function (response_url) {
-				if (response_url) {
-					// window.open(response_url, '_blank')?.focus();
-					const re = /#access_token=(.*?)&/;
-					const oauth_token = response_url.match(re)?.[1];
-					if (oauth_token) {
-						chrome.storage.local.set({ oauth_token });
-					}
-				}
-			}
-		);
-	};
 
 	return (
-		<>
-			<meta></meta>
-			<button
-				onclick={fetchToken}
-				class='m-1 rounded-md border border-kori-light-blue px-0.5 py-px text-[0.7rem] transition-colors duration-300 ease-in-out hover:bg-kori-light-blue/30 hover:text-kori-text/75'
-			>
-				Connect to Twitch
-			</button>
-		</>
+		<div class='mx-4 my-8 flex flex-col justify-center items-center space-y-2 space-x-2'>
+			{props.token && props.user && (
+				<>
+					<div>
+						omg <span class='rounded-md bg-kori-light-blue/25 px-0.5 py-px'>@{props.user.login}</span>{' '}
+						hiii
+					</div>
+					<button
+						onclick={props.logout}
+						class='rounded-md border border-kori-light-blue px-0.5 py-px text-[0.7rem] transition-colors duration-300 ease-in-out hover:bg-kori-light-blue/30 hover:text-kori-text/75'>
+                        logout
+					</button>
+				</>
+			)}
+			{!props.token && (
+                <>
+					<div>
+						<span class='rounded-md px-1 py-px'></span>
+					</div>
+					<button
+						onclick={props.fetchToken}
+						class='rounded-md border border-kori-light-blue px-0.5 py-px text-[0.7rem] transition-colors duration-300 ease-in-out hover:bg-kori-light-blue/30 hover:text-kori-text/75'>
+                        Connect to Twitch
+					</button>
+                </>
+			)}
+		</div>
 	);
 };

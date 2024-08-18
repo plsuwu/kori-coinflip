@@ -1,3 +1,4 @@
+// websocket connection handler
 class WebSocketUtil {
 	private static instance: WebSocketUtil;
 	private socket: WebSocket | null = null;
@@ -29,7 +30,7 @@ class WebSocketUtil {
 
 		// recv message from socket server
 		this.socket.onmessage = (event) => {
-			console.log(`[debug] Incoming message: ${event.data}`);
+			console.log(`[+] Incoming message: ${event.data}`);
 			// message handler logic to parse kori !brb
 		};
 

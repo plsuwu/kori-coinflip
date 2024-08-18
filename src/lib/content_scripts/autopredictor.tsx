@@ -5,8 +5,6 @@ const flipped = () => {
 	return Math.random() > 0.5 ? 1 : 0;
 };
 
-const I_DEBUGGED_THIS_ON_TOBS_STREAM = 'CHAT GRAMBLE'; // idk what kori's break gramble is called, cleanup when break over!!
-
 // chains mutation observers to allow DOM changes to occur (e.g await popups) before trying to query nonexistent DOM elements
 // could be refactored significantly
 export const predict = async () => {
@@ -51,7 +49,7 @@ export const predict = async () => {
 			// i think (??) we should only fail the inner check if we are iterate over the array in the observer callback
 			const observerB = new MutationObserver((_mutations) => {
 				const coinflipButton = document
-					.querySelector(`p[data-test-selector="predictions-list-item__title"]`)
+					.querySelector('p[data-test-selector="predictions-list-item__title"]')
 					?.closest('button');
 
 				if (coinflipButton) {
@@ -64,7 +62,7 @@ export const predict = async () => {
 					// likely no current or recent predictions
 					observerB.disconnect();
 					reject(
-						'Cannot find the required DOM element (stage outer) for Observer B (have there been any current or recent predictions?)'
+						'Cannot find the required DOM element (stage outer) for Observer B (no current OR recent predictions to toggle?)'
 					);
 				}
 			});
@@ -105,8 +103,9 @@ export const predict = async () => {
 		};
 
 		const startD = (favors: string) => {
+
+            // i think this is fixed and so this guard shouldn't be needed anymore
 			if (stageDObserving) {
-				// i think this is fixed and shouldn't be needed anymore
 				console.warn('[x] Tried to start another stage D while we were already observing the DOM.');
 				return;
 			}
@@ -118,18 +117,13 @@ export const predict = async () => {
 				);
 				const vote = document.querySelectorAll('div[class*="custom-prediction-button__interactive"]');
 
-				// console.log('OUTER:', outer, 'VOTE:', vote);
-				// console.info('index 0 of outer & vote:', outer[0], vote[0]);
-				// console.info('index 0 of outer & vote:', outer[random], vote[random]);
-
 				const random = flipped();
 				const input = outer[random].querySelector('input') as HTMLInputElement;
 				const voteButton = vote[random].closest('button') as HTMLButtonElement;
 
-				// console.log('[+] INPUT + VOTE? ->', input, voteButton);
 				if (input && voteButton) {
-					// input.value = favors;
-					input.value = '50'; // avoid gramble all my tob points while debugging
+					input.value = favors; // AHHHHHHHHHHH
+                    // input.value = '50'; // avoid gramble all my tob points while debugging
 
 					const ev = new Event('input', {
 						bubbles: true,
@@ -190,7 +184,7 @@ chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 				sendResponse({ status: 'complete', favors: res });
 			})
 			.catch((error) => {
-				console.error('[-] Error in predict:', error);
+				console.error('[-] Error in predict fn:', error);
 				sendResponse({ status: 'error', message: error });
 			});
 

@@ -20,19 +20,49 @@ const uri = `https://id.twitch.tv/oauth2/authorize?force_verify=true&response_ty
 const [state, setState] = createSignal(false);
 const [favors, setFavors] = createSignal<number | null>(null);
 
+const getIconPath = (state: boolean): string => {
+    const type = state ? 'enabled' : 'disabled';
+    const item = Math.floor(Math.random() * 11) + 1;
+
+    return `/public/${type}/insanerac_${type[0]}${item}.png`;
+}
+
 chrome.runtime.onInstalled.addListener(() => {
 	// on extension install, clear any existing data and re-init
 	chrome.storage.local.clear();
 	chrome.storage.local.set({ state: false });
 });
 
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local') {
+        if (changes.state?.newValue != null) {
+
+            // guard against some weird non-boolean state being set
+            if (typeof changes.state?.newValue !== typeof true) {
+                console.error('[!] Invalid state found when querying state. Cannot set ext icon.');
+                return;
+            }
+
+            chrome.action.setIcon({
+                path: getIconPath(changes.state.newValue)
+            }, () => {
+                console.log('[+] Updated icon.');
+            });
+        }
+    }
+    // for (let [key, { oldValue, newValue  }] of Object.entries(changes)) {
+    //     console.log(
+    //         `stored key => '${key}' in ns => '${namespace} is changed:`,
+    //         `${oldValue} => ${newValue}`
+    //     );
+    // }
+});
 
 // chrome.runtime.reload();
 chrome.runtime.onStartup.addListener(() => {
 	chrome.storage.local.get(['state', 'auth', 'user'], (res) => {
-        console.log(res);
-
 		setState(res.state);
+        chrome.browserAction.setIcon({ path: getIconPath(res.state) });
 	});
 });
 

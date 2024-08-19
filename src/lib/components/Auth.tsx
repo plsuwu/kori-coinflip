@@ -14,7 +14,7 @@ export const Auth: Component<Props> = (props: Props) => {
 
 
 	return (
-		<div class='mx-4 my-8 flex flex-col justify-center items-center space-y-2 space-x-2'>
+		<div class='mx-4 my-8 flex flex-col justify-center items-center space-y-2'>
 			{props.token && props.user && (
 				<>
 					<div>
@@ -43,3 +43,5 @@ export const Auth: Component<Props> = (props: Props) => {
 		</div>
 	);
 };
+
+

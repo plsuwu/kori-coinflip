@@ -40,24 +40,22 @@ const manifest = defineManifest(async () => ({
 	version: '0.1.0',
 	background: { service_worker: 'src/lib/worker.tsx' },
 	permissions: ['storage', 'identity', 'tabs', 'scripting'],
-	host_permissions: [
-		'http://twitch.tv/*',
-		'https://twitch.tv/*',
-		'http://twitch.tv/kori',
-		'https://twitch.tv/kori',
-		'https://twitch.tv/tobs',
-	],
+	host_permissions: ['http://twitch.tv/*', '<all_urls>'],
 
 	action: {
 		default_popup: 'index.html',
-		default_icon: 'public/kori.png',
+		default_icon: 'public/disabled/insanerac_d9.png'
 	},
+	web_accessible_resources: [
+		{
+			resources: ['public/enabled/*.png', 'public/disabled/*.png'],
+
+			matches: ['<all_urls>'],
+		},
+	],
 	content_scripts: [
 		{
-			matches: [
-				'https://www.twitch.tv/tobs',
-				'https://www.twitch.tv/kori',
-			],
+			matches: ['https://www.twitch.tv/tobs', 'https://www.twitch.tv/kori'],
 			js: ['./src/lib/content_scripts/autopredictor.tsx'],
 		},
 	],

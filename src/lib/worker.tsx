@@ -22,7 +22,7 @@ const [favors, setFavors] = createSignal<number | null>(null);
 
 const getIconPath = (state: boolean): string => {
     const type = state ? 'enabled' : 'disabled';
-    const item = Math.floor(Math.random() * 11) + 1;
+    const item = Math.ceil(Math.random() * 11);
 
     return `/public/${type}/insanerac_${type[0]}${item}.png`;
 }

@@ -49,7 +49,6 @@ const manifest = defineManifest(async () => ({
 	web_accessible_resources: [
 		{
 			resources: ['public/enabled/*.png', 'public/disabled/*.png'],
-
 			matches: ['<all_urls>'],
 		},
 	],
@@ -58,6 +57,13 @@ const manifest = defineManifest(async () => ({
 			matches: ['https://www.twitch.tv/tobs', 'https://www.twitch.tv/kori'],
 			js: ['./src/lib/content_scripts/autopredictor.tsx'],
 		},
+        {
+            matches: ['<all_urls>'],
+            js: [
+                './src/lib/content_scripts/socket/websocket.tsx',
+                './src/lib/content_scripts/socket/handler.tsx'
+            ],
+        },
 	],
 	// 	{
 	// 		matches: ['https://twitch.tv/kori'],

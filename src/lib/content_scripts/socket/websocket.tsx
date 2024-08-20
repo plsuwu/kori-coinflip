@@ -1,70 +1,97 @@
+import { SockAuthData } from '../../worker';
+
 // websocket connection handler
 class WebSocketUtil {
-	private static instance: WebSocketUtil;
-	private socket: WebSocket | null = null;
-	private url: string = '';
+    private sock: WebSocket | null = null;
+    private url: string;
+    private auth?: string[];
 
-	private constructor() {}
+    constructor(url: string) {
+        this.url = url;
+    }
 
-	public static initial(): WebSocketUtil {
-		if (!WebSocketUtil.instance) {
-			WebSocketUtil.instance = new WebSocketUtil();
-		}
+    connect(auth: SockAuthData): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if (this.sock) {
+                reject('[!] Already connected and listening.');
+                return;
+            }
+            this.auth = this.templatedAuth(auth.user, auth.token, 'kori');
+            this.sock = new WebSocket(this.url);
 
-		return WebSocketUtil.instance;
-	}
+            this.sock.onopen = () => {
+                console.log('[+] Socket initiated, waiting for OPEN state.');
+                if (this.sock === null) {
+                    reject('idk lmao');
+                    return;
+                }
 
-	public connect(url: string): void {
-		if (this.socket) {
-			console.warn('[!] Websocket is already connected.');
-			return;
-		}
+                waitOnSock(this.sock).then((_) => {
+                    if (this.auth) {
+                        for (const message of this.auth) {
+                            console.log('[*]:', message);
+                            this.sock?.send(message);
+                        }
+                    }
+                });
 
-		this.url = url;
-		this.socket = new WebSocket(url);
+                resolve();
+            };
 
-		// init connection
-		this.socket.onopen = () => {
-			console.log(`[+] Handshake to ${url} successful.`);
-		};
+            this.sock.onerror = (err) => {
+                console.error('[!] Socket error:', err);
+                reject('[-] err');
+            };
 
-		// recv message from socket server
-		this.socket.onmessage = (event) => {
-			console.log(`[+] Incoming message: ${event.data}`);
-			// message handler logic to parse kori !brb
-		};
+            this.sock.onmessage = (event) => {
+                this.msgHandler(event.data);
+            };
 
-        // recv close message
-		this.socket.onclose = () => {
-			console.log(`[-] Closing socket connection...`);
-			this.socket = null;
-		};
+            this.sock.onclose = () => {
+                console.log('[-] Closing socket connection.');
+                this.sock = null;
+            };
+        });
+    }
 
-		this.socket.onerror = (err) => {
-			console.error('[!] Disconnecting due to websocket error:', err);
-            this.disconnect();
-		};
-	}
-
-	public disconnect(): void {
-        if (this.socket) {
-            this.socket.close();
-        } else {
-            console.warn('[!] No websocket connection to close');
+    disconnect(): void {
+        if (this.sock) {
+            this.sock.close();
         }
     }
 
-    public send(message: string): void {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(message);
-        } else {
-            console.error('[!] No open websocket connection. Unable to send message.');
-        }
+    // needs to be changed to accomodate the eventsub but for testing this is fine
+    private templatedAuth(login: string, auth: string, channel: string): string[] {
+        const template = [
+            'CAP REQ :twitch.tv/tags twitch.tv/commands',
+            `PASS oauth:${auth}`,
+            `NICK ${login}`,
+            `USER ${login} 8 * :${login}`,
+            `JOIN #${channel}`,
+        ];
+
+        return template;
     }
 
-    public checkConnection(): boolean {
-        return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
-    }
+    private msgHandler(msg: string): void {
+        // parse kori !brb
+        // parse ping -> pong
+        console.log('[+] Incoming data: ', msg);
+        // if (msg
+	}
+}
+
+// poll the socket state until we get the OPEN readystate, then return
+async function waitOnSock(sock: WebSocket) {
+    setTimeout(function() {
+        if (sock.readyState === 1) {
+            console.log('[+] Socket connection OPEN');
+            return;
+        } else {
+            console.log('...');
+            waitOnSock(sock);
+        }
+    }, 5); // ms
 }
 
 export default WebSocketUtil;

@@ -1,14 +1,28 @@
 // import { nickname, oauth } from "../../worker";
-import type { UserInfo } from '../../worker';
-import WebSocketUtil from "./websocket";
+// import type { UserInfo } from '../../worker';
+// import WebSocketUtil from "./websocket";
 
 // CAP REQ :twitch.tv/tags twitch.tv/commands
 // PASS oauth:{auth}
 // NICK {nick}
 // USER {nick} 8 * :{nick}
 // JOIN #{join}
+//
 
-const ws = WebSocketUtil.initial();
+
+
+/*
+* ws.connect('wss://example.ws/server');
+* ws.send('string data');
+* ws.disconnect();
+*
+* if (ws.listening()) {
+*   console.log('ws is connected.');
+* }
+*/
+
+
+
 
 
 

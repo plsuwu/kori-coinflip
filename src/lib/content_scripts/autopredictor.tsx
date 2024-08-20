@@ -122,8 +122,8 @@ export const predict = async () => {
 				const voteButton = vote[random].closest('button') as HTMLButtonElement;
 
 				if (input && voteButton) {
-					input.value = favors; // AHHHHHHHHHHH
-                    // input.value = '50'; // avoid gramble all my tob points while debugging
+					// input.value = favors; // AHHHHHHHHHHH
+                    input.value = '666'; // avoid gramble all my tob points while debugging
 
 					const ev = new Event('input', {
 						bubbles: true,

@@ -38,13 +38,13 @@ const manifest = defineManifest(async () => ({
 	manifest_version: 3,
 	name: 'kori coinflip',
 	version: '0.1.0',
-	background: { service_worker: 'src/lib/worker.tsx' },
+	background: { service_worker: './src/lib/worker.tsx' },
 	permissions: ['storage', 'identity', 'tabs', 'scripting'],
 	host_permissions: ['http://twitch.tv/*', '<all_urls>'],
 
 	action: {
 		default_popup: 'index.html',
-		default_icon: 'public/disabled/insanerac_d9.png'
+		default_icon: 'public/disabled/insanerac_d9.png',
 	},
 	web_accessible_resources: [
 		{
@@ -54,16 +54,13 @@ const manifest = defineManifest(async () => ({
 	],
 	content_scripts: [
 		{
-			matches: ['https://www.twitch.tv/tobs', 'https://www.twitch.tv/kori'],
+			matches: ['<all_urls>'],
 			js: ['./src/lib/content_scripts/autopredictor.tsx'],
 		},
-        {
-            matches: ['<all_urls>'],
-            js: [
-                './src/lib/content_scripts/socket/websocket.tsx',
-                './src/lib/content_scripts/socket/handler.tsx'
-            ],
-        },
+		{
+			matches: ['<all_urls>'],
+			js: ['./src/lib/content_scripts/socket/websocket.tsx'],
+		},
 	],
 	// 	{
 	// 		matches: ['https://twitch.tv/kori'],

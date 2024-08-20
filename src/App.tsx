@@ -1,5 +1,5 @@
 import { createSignal, onMount, type Component } from 'solid-js';
-import { gramble } from './lib/worker';
+import { debugGramble } from './lib/worker';
 import { Toggle } from './lib/components/Toggle';
 import { Auth } from './lib/components/Auth';
 import { revoke } from './lib/content_scripts/requests';
@@ -17,7 +17,6 @@ const App: Component = () => {
 	const [state, setState] = createSignal(false);
 	const [token, setToken] = createSignal('');
 	const [user, setUser] = createSignal<UserData>({});
-	const [loading, setLoading] = createSignal<boolean>(false);
 
 	onMount(() => {
 		chrome.runtime.sendMessage({ action: 'curr_auth' }, (res) => {
@@ -57,7 +56,8 @@ const App: Component = () => {
 	};
 
 	const runDebugGramble = () => {
-		gramble();
+        console.log('gramelb');
+		debugGramble();
 	};
 
 	const clearAllData = () => {
@@ -78,7 +78,6 @@ const App: Component = () => {
 					user={user()}
 					logout={logout}
 					fetchToken={fetchToken}
-					loading={loading()}
 				/>
 			</div>
 			<div class='my-12 flex flex-row items-center justify-center'>

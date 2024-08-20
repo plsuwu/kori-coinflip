@@ -1,23 +1,6 @@
-const HELIX = 'https://api.twitch.tv/helix'
 const VALIDATE_URL = 'https://id.twitch.tv/oauth2/validate';
 const REVOKE_URL = 'https://id.twitch.tv/oauth2/revoke';
 const CLIENT_ID = 'hzjlx3hy3h0f863czefkivrlfs3f6a';
-
-export const color = async (token: string, user_id: string, url: string = HELIX) => {
-
-	const headers = { Authorization: `Bearer ${token}`, 'Client-Id': CLIENT_ID };
-    let res = await fetch(`${url}/chat/color`, { headers });
-
-    if (!res.ok) {
-        console.error('[!] Error retrieving user color (defaulting to #e5e7ed):', res);
-        return '#e5e7ed';
-    }
-
-    const body = await res.json()
-    console.log('[+] Setting user color:', body);
-
-    return body.color;
-}
 
 export const revoke = async (token: string, url: string = REVOKE_URL) => {
 	console.log('[-] Attempting to revoke token: ', token);

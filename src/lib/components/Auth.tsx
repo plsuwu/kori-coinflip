@@ -4,7 +4,6 @@ import { UserData } from '../../App';
 interface Props {
     token: string;
     user: UserData;
-    loading: boolean;
     logout: () => void;
     fetchToken: () => void;
 }

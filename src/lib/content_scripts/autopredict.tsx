@@ -45,7 +45,7 @@ export const predict = () => {
 			});
 		};
 
-		const startB = (favors: string) => {
+		const startB = (channelPoints: string) => {
 			const observerB = new MutationObserver((_mutations) => {
 				const coinflipButton = document
 					.querySelector(
@@ -58,7 +58,7 @@ export const predict = () => {
 					observerB.disconnect();
 
 					console.info('[+] B okay -> starting C');
-					startC(favors);
+					startC(channelPoints);
 				} else {
 					// failing here means there is likely no current or recent predictions
 					observerB.disconnect();
@@ -76,7 +76,7 @@ export const predict = () => {
 		};
 
 		// failing here likely means that there WAS a prediction, but the gramble period has ended
-		const startC = (favors: string) => {
+		const startC = (channelPoints: string) => {
 			const observerC = new MutationObserver((_) => {
 				observerC.disconnect();
 
@@ -88,7 +88,7 @@ export const predict = () => {
 					customButton.click();
 
 					console.info('[+] C okay -> starting D');
-					startD(favors);
+					startD(channelPoints);
 				} else {
 					reject(
 						'Cannot find the required DOM element for Observer C (did we miss the coinflip cutoff?)'
@@ -103,7 +103,7 @@ export const predict = () => {
 			});
 		};
 
-		const startD = (favors: string) => {
+		const startD = (channelPoints: string) => {
 			// i think this is fixed and so this guard shouldn't be needed anymore
 			if (stageDObserving) {
 				console.warn(
@@ -130,8 +130,8 @@ export const predict = () => {
 				) as HTMLButtonElement;
 
 				if (input && voteButton) {
-					// input.value = favors; // AHHHHHHHHHHH
-					input.value = '666'; // avoid gramble all my tob points while debugging
+					input.value = channelPoints; // AHHHHHHHHHHH
+					// input.value = '666'; // avoid gramble all my tob points while debugging
 
 					const ev = new Event('input', {
 						bubbles: true,
@@ -147,7 +147,7 @@ export const predict = () => {
 						close.click();
 
 						console.info('[*] All stages executed without issue.');
-						resolve(favors);
+						resolve(channelPoints);
 					}
 				} else {
 					if (!input) {
@@ -200,7 +200,7 @@ chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 	if (req.action === 'predict') {
 		predict()
 			.then((res) => {
-				sendResponse({ status: 'complete', favors: res });
+				sendResponse({ status: 'complete', channelPoints: res });
 			})
 			.catch((error) => {
 				console.error('[-] Error in predict fn:', error);

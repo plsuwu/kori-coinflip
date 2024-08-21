@@ -117,10 +117,8 @@ class WebSocketUtil {
 			`PASS oauth:${auth}`,
 			`NICK ${login}`,
 			`USER ${login} 8 * :${login}`,
-			// `JOIN #${channel}`,
-
-			`JOIN #plss`, // debrug
-		];
+			`JOIN #${channel}`,
+        ];
 
 		return template;
 	}
@@ -138,12 +136,10 @@ class WebSocketUtil {
 
 			if (matches) {
 				console.log(matches);
-				// const broadcaster = `${channel}!${channel}@${channel}`;
-				const broadcaster = 'plss!plss@plss';
+				const broadcaster = `${channel}!${channel}@${channel}`;
 				if (
 					matches[1] === broadcaster &&
-					// matches[2] === channel &&
-					matches[2] === 'plss' &&
+					matches[2] === channel &&
 					matches[3].includes(run)
 				) {
 					console.log('[#] Kori brbing, grambling...');

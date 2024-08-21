@@ -46,6 +46,10 @@ const App: Component = () => {
 	};
 
 	const logout = async () => {
+		if (state() === true) {
+			chrome.runtime.sendMessage({ action: 'new_state' }, () => {});
+		}
+
 		chrome.runtime.sendMessage({ action: 'revoke' }, (_res) => {
 			console.log(_res);
 			setToken('');
@@ -74,14 +78,14 @@ const App: Component = () => {
 	};
 
 	return (
-		<div class='flex min-h-[450px] max-h-[450px] flex-col justify-items-center'>
+		<div class='flex max-h-[450px] min-h-[450px] flex-col justify-items-center'>
 			<div class='flex w-full flex-col items-center justify-center bg-black/25 py-4'>
 				<span class='text-center text-3xl font-semibold text-kori-light-blue'>
 					kori coinflip
 				</span>
 			</div>
 			<div class='w-full'></div>
-			<div class='flex flex-col m-1'>
+			<div class='m-1 flex flex-col'>
 				<Auth
 					token={token()}
 					user={user()}
@@ -89,7 +93,7 @@ const App: Component = () => {
 					fetchToken={fetchToken}
 				/>
 			</div>
-			<div class='my-6 flex flex-1 flex-col flex-grow items-center justify-start'>
+			<div class='my-6 flex flex-1 flex-grow flex-col items-center justify-start'>
 				<Toggle
 					user={user().login}
 					state={state()}

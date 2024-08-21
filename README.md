@@ -1,6 +1,10 @@
 # kori coinflip
 
-will autobet your channel points (all of them) on a random coin side when kori goes on break :)
+automatically put all your channel points (all of them) on a random coin side when kori goes on break :)
+<br/>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/plsuwu/kori-coinflip/master/kori-screenshot.png" alt="koroinflip"/>
+</p>
 
 ## installation
 

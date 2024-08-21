@@ -1,5 +1,5 @@
 import { createSignal, onMount, type Component } from 'solid-js';
-import { debugGramble } from './lib/worker';
+// import { debugGramble } from './lib/worker';
 import { Toggle } from './lib/components/Toggle';
 import { Auth } from './lib/components/Auth';
 import { revoke } from './lib/content_scripts/requests';
@@ -20,7 +20,7 @@ const App: Component = () => {
 
 	onMount(() => {
 		chrome.runtime.sendMessage({ action: 'curr_auth' }, (res) => {
-            console.log('auth res: ',res);
+			console.log('auth res: ', res);
 			if (res.status === 'error') {
 				if (res.message === 'expired') {
 					// re-validate
@@ -32,14 +32,14 @@ const App: Component = () => {
 		});
 
 		chrome.runtime.sendMessage({ action: 'curr_state' }, (res) => {
-            console.log(res);
+			console.log(res);
 			setState(res.data);
 		});
 	});
 
 	const fetchToken = async () => {
 		chrome.runtime.sendMessage({ action: 'auth' }, (res) => {
-            console.log(res);
+			console.log(res);
 			setToken(res.token);
 			setUser(res.user);
 		});
@@ -47,7 +47,7 @@ const App: Component = () => {
 
 	const logout = async () => {
 		chrome.runtime.sendMessage({ action: 'revoke' }, (_res) => {
-            console.log(_res);
+			console.log(_res);
 			setToken('');
 			setUser({});
 		});
@@ -55,32 +55,33 @@ const App: Component = () => {
 
 	const toggle = () => {
 		chrome.runtime.sendMessage({ action: 'new_state' }, (res) => {
-            console.log(res);
+			console.log(res);
 
 			setState(res.data);
 		});
-	};
-
-	const runDebugGramble = () => {
-        // console.log('gramelb');
-		debugGramble();
 	};
 
 	const clearAllData = () => {
-		chrome.runtime.sendMessage({ action: 'new_state', force: false }, (res) => {
-            console.log(res);
+		chrome.runtime.sendMessage(
+			{ action: 'new_state', force: false },
+			(res) => {
+				console.log(res);
 
-			setState(res.data);
-            logout();
-		});
+				setState(res.data);
+				logout();
+			}
+		);
 	};
 
 	return (
-		<>
-			<div class='flex items-center justify-center'>
-				<button onclick={runDebugGramble}>debug gramble</button>
+		<div class='flex min-h-[450px] max-h-[450px] flex-col justify-items-center'>
+			<div class='flex w-full flex-col items-center justify-center bg-black/25 py-4'>
+				<span class='text-center text-3xl font-semibold text-kori-light-blue'>
+					kori coinflip
+				</span>
 			</div>
-			<div>
+			<div class='w-full'></div>
+			<div class='flex flex-col m-1'>
 				<Auth
 					token={token()}
 					user={user()}
@@ -88,13 +89,17 @@ const App: Component = () => {
 					fetchToken={fetchToken}
 				/>
 			</div>
-			<div class='my-12 flex flex-row items-center justify-center'>
-				<Toggle user={user().login} state={state()} handlerFn={toggle} />
+			<div class='my-6 flex flex-1 flex-col flex-grow items-center justify-start'>
+				<Toggle
+					user={user().login}
+					state={state()}
+					handlerFn={toggle}
+				/>
 			</div>
-			<div>
+			<div class='flex flex-row-reverse px-2 py-1'>
 				<ClearLocal handleParentEvent={clearAllData} />
 			</div>
-		</>
+		</div>
 	);
 };
 

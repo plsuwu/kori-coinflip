@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    @font-face {
+        font-family: Bebas Neue;
+        font-weight: 400;
+        src: url('/public/fonts/BebasNeue-Regular.ttf') format('ttf');
+    }
+}
+
 body {
-    @apply min-w-[350px] min-h-[450px] bg-kori-bg text-kori-text
+    @apply min-w-[300px] min-h-[450px] bg-kori-bg text-kori-text font-bebas
 }

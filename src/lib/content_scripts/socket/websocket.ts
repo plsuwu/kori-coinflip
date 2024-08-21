@@ -1,6 +1,3 @@
-import { WebSocketClient } from 'vite';
-import { debugGramble } from '../../worker';
-// import { SockAuthData } from '../../worker';
 interface AuthData {
 	user: string;
 	token: string;
@@ -36,19 +33,23 @@ class WebSocketUtil {
 				waitOnSock(this.sock).then((_) => {
 					if (this.auth && this.ready()) {
 						for (const msg of this.auth) {
-							console.info('[^]:', msg);
 							this.sock?.send(msg);
 						}
+						console.info('[->] Sent Twitch IRC auth frames.');
 
 						/* loop socket keepalive */
 						const ping = () => {
 							if (this.sock !== null) {
 								setTimeout(() => {
-									console.log(
-										'[*] Keepalive placeholder :)) (EXTEND TIMER THO LMAO).'
-									);
+									this.sock?.send('PING');
 									ping();
+
+									console.log(
+										`[->]<${new Date(Date.now()).toLocaleTimeString()}> Client PING frame sent.`
+									);
 								}, this.jitter());
+							} else {
+								return;
 							}
 						};
 
@@ -65,8 +66,7 @@ class WebSocketUtil {
 			this.sock.onmessage = (event) => {
 				const run = this.ircParser(event.data, auth.channel, '!brb');
 				if (run) {
-					// we want gramble, resolve the promise to allow worker to
-					// execute on main thread
+					// we want gramble NOW, resolve the promise and handle in worker
 					resolve('gramble :)');
 					return true;
 				}
@@ -74,15 +74,8 @@ class WebSocketUtil {
 
 			this.sock.onclose = () => {
 				console.log('[-] Closing socket connection.');
-				// this.sock = null;
-
 				return;
-				// chrome.runtime.sendMessage({ action: 'sock_closed' }, (res) => {
-				// 	console.log('[-] State is now disabled:', res);
-				// });
 			};
-
-			// resolve();
 		});
 	}
 
@@ -109,12 +102,11 @@ class WebSocketUtil {
 
 	private pong(): void {
 		console.log(
-			`[->]<${new Date(Date.now()).toLocaleTimeString()}> Responding to a PING frame`
+			`[->]<${new Date(Date.now()).toLocaleTimeString()}> Responding to incoming PING frame`
 		);
 		this.sock?.send('PONG');
 	}
 
-	// needs to be changed to accomodate the eventsub but for testing this is fine
 	private templatedAuth(
 		login: string,
 		auth: string,
@@ -134,8 +126,8 @@ class WebSocketUtil {
 	}
 
 	private ircParser(msg: string, channel: string, run: string): boolean {
-		console.log('[<-] incoming raw data: ', msg);
-		if (msg === 'PING :tmi.twitch.tv') {
+		// console.log('[<-] incoming raw data:', msg);
+		if (msg.trim() === 'PING :tmi.twitch.tv') {
 			this.pong();
 		}
 
@@ -156,37 +148,50 @@ class WebSocketUtil {
 				) {
 					console.log('[#] Kori brbing, grambling...');
 					return true;
-					// chrome.storage.local.set({ gramble: true });
-					// chrome.runtime.sendMessage({ action: 'gramble' }, (res) => {
-					// 	if (chrome.runtime.lastError) {
-					// 		console.error(
-					// 			'Error sending message from websocket handler to worker:',
-					// 			chrome.runtime.lastError
-					// 		);
-					// 		return;
-					// 	}
-					// });
 				}
 			}
+		} else if (
+			msg.includes('USERSTATE') &&
+			!msg.includes('GLOBALUSERSTATE')
+		) {
+			console.log(
+				'[<-] Sock recv USERSTATE ',
+				'\n(https://dev.twitch.tv/docs/chat/irc/#irc-command-reference)'
+			);
+		} else if (msg.includes('GLOBALUSERSTATE')) {
+			console.log(
+				'[<-] Sock recv GLOBALUSERSTATE ',
+				'\n(https://dev.twitch.tv/docs/chat/irc/#irc-command-reference)'
+			);
+		} else if (msg.includes('NOTICE')) {
+			console.log('[<-] Sock recv NOTICE:');
+			msg.trim()
+				.split('\r\n')
+				.forEach((line) => {
+					console.log(`     > ${line}`);
+				});
+		} else {
+			console.log('[<-] Sock recv:');
+			msg.trim()
+				.split('\r\n')
+				.forEach((line) => {
+					console.log(`     > ${line}`);
+				});
 		}
 
 		return false;
 	}
 
 	private jitter(): number {
-		// keepalive timeout seconds in welcome message - we use 60 seconds & 0 <= 30 secs random
-		// jitter for debugging
-		const timer = 60000; // ms
-		const randJitter = Math.floor(Math.random() * 30000);
+		const timer = 240000; // ms -> 4 mins
+		const randJitter = Math.floor(Math.random() * 60000); // jitter up to 1 min
 		const mins = new Date(Date.now() + (timer + randJitter));
 
 		console.log(
-			`[*]<${new Date(Date.now()).toLocaleTimeString()} Next PING in ${mins.toLocaleTimeString()}`
+			`[+]<${new Date(Date.now()).toLocaleTimeString()}> Next PING in ${mins.toLocaleTimeString()}`
 		);
 		return timer + randJitter;
 	}
-
-	// keepalive(): void {}
 }
 
 enum SockState {
@@ -196,7 +201,8 @@ enum SockState {
 	Closed = 3,
 }
 
-// poll the socket every 5ms (blocking ws sender execution) until OPEN readyState is found
+// poll the socket every 5ms (blocking ws sender execution) until OPEN readyState (by default,
+// any state if specified)
 async function waitOnSock(sock: WebSocket | null, state: SockState = 1) {
 	setTimeout(function () {
 		if (sock && sock.readyState === state) {
@@ -210,7 +216,7 @@ async function waitOnSock(sock: WebSocket | null, state: SockState = 1) {
 			console.log('...');
 			waitOnSock(sock);
 		}
-	}, 5); // ms
+	}, 5);
 }
 
 export default WebSocketUtil;

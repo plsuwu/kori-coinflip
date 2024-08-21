@@ -4,7 +4,7 @@ const flipped = () => {
 };
 
 // chains mutation observers to allow DOM changes to occur (e.g await popups) before trying to query nonexistent DOM elements
-// could be refactored significantly
+// could (and probably should) be refactored a reasonable amount
 export const predict = () => {
 	let stageDObserving: boolean = false;
 
@@ -20,21 +20,24 @@ export const predict = () => {
 				if (channelPointsQuery) {
 					const attr = channelPointsQuery.getAttribute('aria-label');
 					const matched = attr?.match(/[0-9,]+/);
-					const points = matched?.filter((val) => val != '')[0].replace(/,/g, '');
+					const points = matched
+						?.filter((val) => val != '')[0]
+						.replace(/,/g, '');
 
-					console.info('[*] A okay -> starting B');
+					console.info('[+] A okay -> starting B');
 
 					// prop drilling 2.0(tm): drill the points count down through the mutation observer chain
 					startB(points as string); // points COULD be `<string | undefined>` here but SURELY this wont cause problems
 				} else {
-					reject('Cannot find the required DOM element for Observer A.');
+					reject(
+						'Cannot find the required DOM element for Observer A.'
+					);
 				}
 			});
 
 			// we might prefer to specifically observe the popup, but we work with document.body for now to avoid
-			// adding too much complexity
-			// similarly, i dont think we have to configure observation for all of those options, but it doesn't
-			// seem to be causing issues
+			// adding too much complexity similarly, i dont think we have to configure observation for all of those options,
+			// but it doesn't seem to be causing issues
 			observerA.observe(document.body, {
 				childList: true,
 				subtree: true,
@@ -43,21 +46,21 @@ export const predict = () => {
 		};
 
 		const startB = (favors: string) => {
-			// failing here - specifically at the outer check - likely means there is not a prediction in progress.
-			// i think (??) we should only fail the inner check if we are iterate over the array in the observer callback
 			const observerB = new MutationObserver((_mutations) => {
 				const coinflipButton = document
-					.querySelector('p[data-test-selector="predictions-list-item__title"]')
+					.querySelector(
+						'p[data-test-selector="predictions-list-item__title"]'
+					)
 					?.closest('button');
 
 				if (coinflipButton) {
 					coinflipButton.click();
 					observerB.disconnect();
 
-					console.info('[*] B okay -> starting C');
+					console.info('[+] B okay -> starting C');
 					startC(favors);
 				} else {
-					// likely no current or recent predictions
+					// failing here means there is likely no current or recent predictions
 					observerB.disconnect();
 					reject(
 						'Cannot find the required DOM element (stage outer) for Observer B (no current OR recent predictions to toggle?)'
@@ -84,7 +87,7 @@ export const predict = () => {
 				if (customButton) {
 					customButton.click();
 
-					console.info('[*] C okay -> starting D');
+					console.info('[+] C okay -> starting D');
 					startD(favors);
 				} else {
 					reject(
@@ -101,10 +104,11 @@ export const predict = () => {
 		};
 
 		const startD = (favors: string) => {
-
-            // i think this is fixed and so this guard shouldn't be needed anymore
+			// i think this is fixed and so this guard shouldn't be needed anymore
 			if (stageDObserving) {
-				console.warn('[x] Tried to start another stage D while we were already observing the DOM.');
+				console.warn(
+					'[x] Tried to start another stage D while we were already observing the DOM.'
+				);
 				return;
 			}
 
@@ -113,15 +117,21 @@ export const predict = () => {
 				const outer = document.querySelectorAll(
 					'div[class*="custom-prediction-button"]:not([class*="custom-prediction-button__interactive"])'
 				);
-				const vote = document.querySelectorAll('div[class*="custom-prediction-button__interactive"]');
+				const vote = document.querySelectorAll(
+					'div[class*="custom-prediction-button__interactive"]'
+				);
 
 				const random = flipped();
-				const input = outer[random].querySelector('input') as HTMLInputElement;
-				const voteButton = vote[random].closest('button') as HTMLButtonElement;
+				const input = outer[random].querySelector(
+					'input'
+				) as HTMLInputElement;
+				const voteButton = vote[random].closest(
+					'button'
+				) as HTMLButtonElement;
 
 				if (input && voteButton) {
 					// input.value = favors; // AHHHHHHHHHHH
-                    input.value = '666'; // avoid gramble all my tob points while debugging
+					input.value = '666'; // avoid gramble all my tob points while debugging
 
 					const ev = new Event('input', {
 						bubbles: true,
@@ -130,7 +140,9 @@ export const predict = () => {
 					input.dispatchEvent(ev);
 					voteButton.click();
 
-					let close = document.querySelector('button[aria-label="Close"]') as HTMLButtonElement;
+					let close = document.querySelector(
+						'button[aria-label="Close"]'
+					) as HTMLButtonElement;
 					if (close) {
 						close.click();
 
@@ -139,11 +151,15 @@ export const predict = () => {
 					}
 				} else {
 					if (!input) {
-						reject('Cannot find the required DOM elements (input field) for Observer D.');
+						reject(
+							'Cannot find the required DOM elements (input field) for Observer D.'
+						);
 					}
 
 					if (!voteButton) {
-						reject('Cannot find the required DOM elements (vote button) for Observer D.');
+						reject(
+							'Cannot find the required DOM elements (vote button) for Observer D.'
+						);
 					}
 				}
 			});
@@ -168,25 +184,20 @@ export const predict = () => {
 		channelPointsButton.click();
 		startA(); // start the observer chain
 
-		// we should be able to run the required functions in like a handful of seconds at most
+		// we should be able to run the required functions in like, a handful
+        // of seconds at most
 		setTimeout(() => {
-			reject('Timeout exceeded: DOM mutations expected to occur faster :(');
-		}, 10_000); // ms
+			reject(
+				'Timeout exceeded: DOM mutations expected to occur much faster :('
+			);
+		}, 10_000);
 	});
 
-    return res;
+	return res;
 };
-
-// chrome.tabs.connect
-// chrome.runtime.onConnect.addListener((req, _, sendRes) => {
-//
-// })
 
 chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 	if (req.action === 'predict') {
-        // chrome.tabs.connect(req.tab);
-        // console.log(chrome.tabs.
-
 		predict()
 			.then((res) => {
 				sendResponse({ status: 'complete', favors: res });
@@ -195,9 +206,7 @@ chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 				console.error('[-] Error in predict fn:', error);
 				sendResponse({ status: 'error', message: error });
 			});
-
 	}
 
-    // indicate asynchronous res
-    return true;
+	return true;
 });

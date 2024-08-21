@@ -11,9 +11,9 @@ export interface UserInfo {
 	user_id: string;
 }
 
-export const debugGramble = () => {
-	gramble();
-};
+// export const debugGramble = () => {
+// 	gramble();
+// };
 
 const gramble = () => {
 	// double check that we intend to gramble before actually grambling
@@ -55,7 +55,7 @@ const predictor = () => {
 					}
 
 					return;
-			    });
+				});
 			}
 		});
 	});
@@ -70,19 +70,6 @@ const getIconPath = (state: boolean): string => {
 	return `public/${type}/insanerac_${type[0]}${item}.png`;
 };
 
-// chrome..addListener((tab) => {
-// 	if (!tab.id) {
-// 		console.error('[!] No tab valid tab id found');
-// 		return;
-// 	}
-//
-//     console.log('[+] action.onclicked listening @', tab.url);
-// 	chrome.scripting.executeScript({
-// 		target: { tabId: tab.id },
-// 		files: ['./content_scripts/autopredict.ts'],
-// 	});
-// });
-
 chrome.runtime.onInstalled.addListener(() => {
 	// on extension install, clear any existing data and re-init
 	chrome.storage.local.clear();
@@ -91,8 +78,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(() => {
 	chrome.storage.local.get(['state', 'auth', 'user'], (res) => {
-		chrome.browserAction.setIcon({ path: getIconPath(res.state) });
-
+		chrome.action.setIcon({ path: getIconPath(res.state) });
 		// if (res.auth) {
 		//     // re-validate
 		// }
@@ -113,10 +99,10 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		gramble();
 	}
 
-    if (req.action === 'debug') {
-        console.log('DEBUGGING CONTENT SCRIPT:', req.sent_by, req);
-        next({ caught: 'true', message: 'ok' });
-    }
+	if (req.action === 'debug') {
+		console.log('DEBUGGING CONTENT SCRIPT:', req.sent_by, req);
+		next({ caught: 'true', message: 'ok' });
+	}
 
 	if (req.action === 'sock_closed') {
 		chrome.storage.local.get(['state'], (res) => {
@@ -251,28 +237,23 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		});
 	}
 
-    return true;
+	return true;
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
 	if (namespace === 'local') {
-		// this isnt it
-		if (changes.gramble && changes.gramble.newValue === true) {
-			console.log('grambling');
-			gramble();
-			chrome.storage.local.set({ gramble: false });
-		}
 
+		// when a new enabled/disabled state is written to localstorage, check its boolean value and
+		// run the relevant handler for that state
 		if (changes.state?.newValue != null) {
-			// guard against some weird non-boolean state being set - i have no idea why this would happen
+
+            // guard for non-bool state and reset to a non-destructive value
 			if (typeof changes.state?.newValue !== typeof true) {
 				console.error(
 					'[!] Returning to default state (disabled): the state was changed to an unknown type.',
 					'[!] Expected boolean `state`, got:',
 					changes.state.newValue
 				);
-
-				// reset state to default (disabled) if we catch on this guard
 				chrome.storage.local.set({ state: false });
 				return;
 			}
@@ -302,6 +283,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 
 					// ws.connect resolves when a `!brb` is received, at which point we call the event
 					// loop again, reconnecting to the socket
+                    //
+                    // this is just barely recognisable as javascript i fucking hate this nightmarish callback hell
 					const loop = () => {
 						chrome.storage.local.get(['state'], (res) => {
 							if (res.state) {

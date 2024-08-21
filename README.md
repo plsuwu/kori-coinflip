@@ -8,8 +8,8 @@ automatically put all your channel points (all of them) on a random coin side wh
 
 ## installation
 
-this extension is pretty specific to google chrome/chromium, but im going out on a limb and assume chrome 
-extensions are (mostly) universally compatible across chromium-based browsers. 
+this extension is pretty specific to google chrome/chromium, but im going out on a limb and i will assume chrome 
+extensions are probably (mostly?) universally compatible across chromium-based browsers. 
 
 surely...
 

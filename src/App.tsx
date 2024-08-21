@@ -20,6 +20,7 @@ const App: Component = () => {
 
 	onMount(() => {
 		chrome.runtime.sendMessage({ action: 'curr_auth' }, (res) => {
+            console.log('auth res: ',res);
 			if (res.status === 'error') {
 				if (res.message === 'expired') {
 					// re-validate
@@ -31,12 +32,14 @@ const App: Component = () => {
 		});
 
 		chrome.runtime.sendMessage({ action: 'curr_state' }, (res) => {
+            console.log(res);
 			setState(res.data);
 		});
 	});
 
 	const fetchToken = async () => {
 		chrome.runtime.sendMessage({ action: 'auth' }, (res) => {
+            console.log(res);
 			setToken(res.token);
 			setUser(res.user);
 		});
@@ -44,6 +47,7 @@ const App: Component = () => {
 
 	const logout = async () => {
 		chrome.runtime.sendMessage({ action: 'revoke' }, (_res) => {
+            console.log(_res);
 			setToken('');
 			setUser({});
 		});
@@ -51,17 +55,21 @@ const App: Component = () => {
 
 	const toggle = () => {
 		chrome.runtime.sendMessage({ action: 'new_state' }, (res) => {
+            console.log(res);
+
 			setState(res.data);
 		});
 	};
 
 	const runDebugGramble = () => {
-        console.log('gramelb');
+        // console.log('gramelb');
 		debugGramble();
 	};
 
 	const clearAllData = () => {
 		chrome.runtime.sendMessage({ action: 'new_state', force: false }, (res) => {
+            console.log(res);
+
 			setState(res.data);
             logout();
 		});

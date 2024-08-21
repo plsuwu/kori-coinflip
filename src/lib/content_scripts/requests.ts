@@ -47,5 +47,7 @@ export const validate = async (token: string, url: string = VALIDATE_URL) => {
 	}
 
 	const res = await validated.json();
+    console.log('[+] Validation ok:', res);
+
 	return { status: 'complete', token, user: res };
 };

@@ -1,6 +1,7 @@
-import { createSignal } from 'solid-js';
+import { STREAM_LINK, IRC_SOCKET_URL, auth_uri } from './util';
 import { validate, revoke } from './content_scripts/requests';
 import WebSocketUtil from './content_scripts/socket/websocket';
+import './content_scripts/autopredict.tsx';
 
 export interface UserInfo {
 	client_id: string;
@@ -10,21 +11,12 @@ export interface UserInfo {
 	user_id: string;
 }
 
-export interface SockAuthData {
-	user: string;
-	token: string;
-}
 export const debugGramble = () => {
-    gramble();
-}
+	gramble();
+};
 
-// PRETTY sure these don't work when the UI isn't visible and therefore i must do
-// massive fucking rewrites
-const [state, setState] = createSignal(false);
-const [user, setUser] = createSignal<SockAuthData>({ user: '', token: '' });
-
-const gramble = async () => {
-	// double check that we intend to gramble before actually grambling because you never know...
+const gramble = () => {
+	// double check that we intend to gramble before actually grambling
 	chrome.runtime.sendMessage({ action: 'curr_state' }, (res) => {
 		if (res.data === false) {
 			console.log('[x] Gramble disabled, not grambling due to this.');
@@ -33,78 +25,63 @@ const gramble = async () => {
 			predictor();
 		}
 	});
+};
 
-	const predictor = async () => {
-		// query all tabs for a tab that contains the target url
-		chrome.tabs.query({}, (tabs) => {
-			if (tabs.every((t) => t.url !== STREAM_LINK)) {
-				console.log('[x] No Kori tabs open, not grambling.');
-				return;
-			}
-			tabs.forEach((t) => {
-				if (t.url === STREAM_LINK) {
-					console.log('[+] Kori tab found:', t);
+const predictor = () => {
+	// query all tabs for a tab that contains the target url
+	chrome.tabs.query({}, (tabs) => {
+		if (tabs.every((t) => t.url !== STREAM_LINK)) {
+			console.log('[x] No Kori tabs open, not grambling.');
+			return;
+		}
 
-					// maybe have an option to open kori in the background
-					if (!t.id) {
+		tabs.forEach((t) => {
+			if (t.url === STREAM_LINK) {
+				console.log('[+] Kori tab found:', t);
+
+				// maybe have an option to open kori in the background
+				if (!t.id) {
+					console.error("[!] Unable to fetch the ID of Kori's tab.");
+					return;
+				}
+
+				chrome.tabs.sendMessage(t.id, { action: 'predict' }, (res) => {
+					if (chrome.runtime.lastError) {
 						console.error(
-							"[!] Unable to fetch the ID of Kori's tab."
+							'Error sending message:',
+							chrome.runtime.lastError
 						);
 						return;
 					}
 
-					chrome.tabs.sendMessage(
-						t.id,
-						{ action: 'predict' },
-						(res) => {
-							if (chrome.runtime.lastError) {
-								console.error(
-									'Error sending message:',
-									chrome.runtime.lastError
-								);
-								return;
-							}
-
-							if (res.status === 'complete') {
-								console.log(
-									'[+] Gramble observer chain completed without issue.'
-								);
-								return;
-							} else {
-								console.error(
-									'[-] Gramble observer chain encountered an issue and returned without completing:',
-									res.message
-								);
-								return;
-							}
-						}
-					);
-				}
-			});
+					return;
+			    });
+			}
 		});
-	};
+	});
 };
 
-// const STREAM_LINK = 'https://www.twitch.tv/kori';
-const STREAM_LINK = 'https://www.twitch.tv/tobs';
-const CLIENT_ID = 'hzjlx3hy3h0f863czefkivrlfs3f6a';
-const CALLBACK_URI =
-	'https://kabldnfpbfcdkbhbolpdbbppiendepjj.chromiumapp.org/ttv_callback';
-const RES_TYPE = 'token';
-const AUTH_SCOPE = 'chat%3Aread';
-const auth_uri = `https://id.twitch.tv/oauth2/authorize?force_verify=true&response_type=${RES_TYPE}&client_id=${CLIENT_ID}&redirect_uri=${CALLBACK_URI}&scope=${AUTH_SCOPE}`;
-
-
-const SOCKET = 'wss://irc-ws.chat.twitch.tv/';
-const ws = new WebSocketUtil(SOCKET);
+const ws = new WebSocketUtil(IRC_SOCKET_URL);
 
 const getIconPath = (state: boolean): string => {
 	const type = state ? 'enabled' : 'disabled';
 	const item = Math.ceil(Math.random() * 11); // pull a random koriINSANERACC frame
 
-	return `/public/${type}/insanerac_${type[0]}${item}.png`;
+	return `public/${type}/insanerac_${type[0]}${item}.png`;
 };
 
+// chrome..addListener((tab) => {
+// 	if (!tab.id) {
+// 		console.error('[!] No tab valid tab id found');
+// 		return;
+// 	}
+//
+//     console.log('[+] action.onclicked listening @', tab.url);
+// 	chrome.scripting.executeScript({
+// 		target: { tabId: tab.id },
+// 		files: ['./content_scripts/autopredict.ts'],
+// 	});
+// });
 
 chrome.runtime.onInstalled.addListener(() => {
 	// on extension install, clear any existing data and re-init
@@ -114,49 +91,75 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(() => {
 	chrome.storage.local.get(['state', 'auth', 'user'], (res) => {
-		setState(res.state);
 		chrome.browserAction.setIcon({ path: getIconPath(res.state) });
+
+		// if (res.auth) {
+		//     // re-validate
+		// }
 	});
 });
 
-const toggleState = (force: boolean | null = null) => {
-	force !== null ?
-		setState(force)
-	:	setState((prev) => (prev ? false : true));
-	chrome.storage.local.set({ state: state() });
+const toggleState = (curr: boolean) => {
+	const newState = curr ? false : true;
+	chrome.storage.local.set({ state: newState });
 
-	return state();
+	return newState;
 };
 
 // make this a switch statement lmaooo
-chrome.runtime.onMessage.addListener((req, sender, sendRes) => {
+chrome.runtime.onMessage.addListener((req, _, next) => {
+	if (req.action === 'gramble') {
+		console.log('[+] Flipping...');
+		gramble();
+	}
+
+    if (req.action === 'debug') {
+        console.log('DEBUGGING CONTENT SCRIPT:', req.sent_by, req);
+        next({ caught: 'true', message: 'ok' });
+    }
+
 	if (req.action === 'sock_closed') {
-		console.log(sender);
-		if (state() === false) {
-			console.warn(
-				'[!] State was already false - sock was manually toggled off'
-			);
-			sendRes({ status: 'completed', data: state() });
-			return true;
-		} else {
-			console.warn('[!] State was true - sock was self-disabled');
-			toggleState();
-			sendRes({ status: 'completed', data: state() });
-			return true;
-		}
+		chrome.storage.local.get(['state'], (res) => {
+			if (res.state != null && res.state === false) {
+				console.log(
+					'[*] State was already off, so sock listener was manually toggled closed.'
+				);
+				next({
+					status: 'completed',
+					state: res.state,
+					message: 'manually closed',
+				});
+			} else if (res.state) {
+				console.log(
+					'[*] State was true, so sock listener closed programmatically.'
+				);
+
+				const newState = toggleState(false);
+				// chrome.storage.local.set({ state: false });
+				next({
+					status: 'completed',
+					state: newState,
+					message: 'self-closed',
+				});
+			}
+		});
 	}
 
 	if (req.action === 'curr_state') {
-		sendRes({ status: 'complete', data: state() });
-		return;
+		chrome.storage.local.get(['state'], (res) => {
+			if (res.state != null) {
+				next({ status: 'complete', data: res.state });
+			}
+		});
 	}
 
 	if (req.action === 'new_state') {
-		const force = req.force !== null ? req.force : null;
-		toggleState(force);
-
-		sendRes({ status: 'complete', data: state() });
-		return true;
+		chrome.storage.local.get(['state'], (res) => {
+			if (res.state != null) {
+				const newState = toggleState(res.state);
+				next({ status: 'complete', data: newState });
+			}
+		});
 	}
 
 	if (req.action === 'auth') {
@@ -168,11 +171,12 @@ chrome.runtime.onMessage.addListener((req, sender, sendRes) => {
 						const re = /#access_token=(.*?)&/;
 						const oauth = res?.match(re)?.[1];
 
-						// i really could not figure out how to condense this down without indeterminate amounts of refactoring
-						// but it might just be chrome API callback hell plus my retarded chungus life
+						// condense this + the else block
 						const _valid = validate(oauth as string).then((res) => {
 							const auth = res.token;
 							const user = res.user;
+
+							// get expiry to work when time permits:
 							const auth_expiry = Date.now() + 3_600_000; // revalidate each hour: 3,600,000ms = ~60mins
 
 							// try getting user color for the UI if/when bothered
@@ -182,11 +186,8 @@ chrome.runtime.onMessage.addListener((req, sender, sendRes) => {
 								user,
 								auth_expiry,
 							});
-							setUser({
-								user: user.login,
-								token: auth as string,
-							});
-							sendRes({
+
+							next({
 								status: 'complete',
 								token: auth,
 								user: user,
@@ -203,7 +204,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendRes) => {
 					const auth_expiry = Date.now() + 3_600_000;
 
 					chrome.storage.local.set({ auth, user, auth_expiry });
-					sendRes({
+					next({
 						status: 'complete',
 						token: res.token,
 						user: res.user,
@@ -211,15 +212,13 @@ chrome.runtime.onMessage.addListener((req, sender, sendRes) => {
 				});
 			}
 		});
-
-		return true;
 	}
 
 	if (req.action === 'curr_auth') {
 		chrome.storage.local.get(['auth', 'user', 'auth_expiry'], (res) => {
 			if (res.user && res.token && res.auth_expiry <= Date.now()) {
 				// pass token so we can revoke it
-				sendRes({
+				next({
 					status: 'error',
 					message: 'expired',
 					token: res.token,
@@ -228,15 +227,13 @@ chrome.runtime.onMessage.addListener((req, sender, sendRes) => {
 			} else {
 				// we send a response with the undefined content when user auth info
 				// isn't saved locally and handle that case in the sender
-				sendRes({
+				next({
 					status: 'complete',
 					token: res.auth,
 					user: res.user,
 				});
 			}
 		});
-
-		return true;
 	}
 
 	if (req.action === 'revoke') {
@@ -248,31 +245,23 @@ chrome.runtime.onMessage.addListener((req, sender, sendRes) => {
 						'user',
 						'auth_expiry',
 					]);
-					sendRes({ status: 'complete' });
+					next({ status: 'complete' });
 				}
 			});
 		});
-
-		return true;
 	}
 
-    if (req.action === 'gramble') {
-        console.log('[+] Flipping...');
-        gramble().then((v) => {
-            sendRes({ status: 'completed', outcome: v });
-        });
-
-        return true;
-    }
+    return true;
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
 	if (namespace === 'local') {
-        if (changes.gramble && changes.gramble.newValue === true) {
-            console.log('grambling');
-            gramble();
-            chrome.storage.local.set({ gramble: false });
-        }
+		// this isnt it
+		if (changes.gramble && changes.gramble.newValue === true) {
+			console.log('grambling');
+			gramble();
+			chrome.storage.local.set({ gramble: false });
+		}
 
 		if (changes.state?.newValue != null) {
 			// guard against some weird non-boolean state being set - i have no idea why this would happen
@@ -284,9 +273,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 				);
 
 				// reset state to default (disabled) if we catch on this guard
-				setState(false);
 				chrome.storage.local.set({ state: false });
-
 				return;
 			}
 
@@ -299,11 +286,42 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 			);
 			// run socket (dis)connection function based on state truthiness
 			changes.state.newValue ?
-				(async () => {
-					ws.connect(user());
-				})()
+				chrome.storage.local.get(['user', 'auth'], (res) => {
+					const user = res.user.login;
+					const token = res.auth;
+					const channel = 'kori';
+
+					console.log(
+						'USER:',
+						user,
+						'TOKEN:',
+						token,
+						'CHANNEL:',
+						channel
+					);
+
+					// ws.connect resolves when a `!brb` is received, at which point we call the event
+					// loop again, reconnecting to the socket
+					const loop = () => {
+						chrome.storage.local.get(['state'], (res) => {
+							if (res.state) {
+								ws.connect({ user, token, channel }).then(
+									(ws_res) => {
+										console.log(ws_res);
+
+										predictor();
+										ws.disconnect().then((_) => {
+											loop();
+										});
+									}
+								);
+							}
+						});
+					};
+
+					loop();
+				})
 			:	ws.disconnect();
 		}
 	}
 });
-

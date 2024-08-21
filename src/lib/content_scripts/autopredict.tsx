@@ -1,5 +1,3 @@
-import { createSignal } from 'solid-js';
-
 // this doesnt have to be super complex so we just fuck
 const flipped = () => {
 	return Math.random() > 0.5 ? 1 : 0;
@@ -7,10 +5,10 @@ const flipped = () => {
 
 // chains mutation observers to allow DOM changes to occur (e.g await popups) before trying to query nonexistent DOM elements
 // could be refactored significantly
-export const predict = async () => {
+export const predict = () => {
 	let stageDObserving: boolean = false;
 
-	return new Promise((resolve, reject) => {
+	const res = new Promise((resolve, reject) => {
 		const startA = () => {
 			const observerA = new MutationObserver((_) => {
 				observerA.disconnect();
@@ -175,10 +173,20 @@ export const predict = async () => {
 			reject('Timeout exceeded: DOM mutations expected to occur faster :(');
 		}, 10_000); // ms
 	});
+
+    return res;
 };
+
+// chrome.tabs.connect
+// chrome.runtime.onConnect.addListener((req, _, sendRes) => {
+//
+// })
 
 chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 	if (req.action === 'predict') {
+        // chrome.tabs.connect(req.tab);
+        // console.log(chrome.tabs.
+
 		predict()
 			.then((res) => {
 				sendResponse({ status: 'complete', favors: res });
@@ -188,7 +196,8 @@ chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 				sendResponse({ status: 'error', message: error });
 			});
 
-		// indicate asynchronous res
-		return true;
 	}
+
+    // indicate asynchronous res
+    return true;
 });

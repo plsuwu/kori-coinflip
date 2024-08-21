@@ -38,28 +38,35 @@ const manifest = defineManifest(async () => ({
 	manifest_version: 3,
 	name: 'kori coinflip',
 	version: '0.1.0',
-	background: { service_worker: './src/lib/worker.tsx' },
+	background: { service_worker: './src/lib/worker.ts' },
 	permissions: ['storage', 'identity', 'tabs', 'scripting'],
-	host_permissions: ['http://twitch.tv/*', '<all_urls>'],
-
+	host_permissions: ['*://*/*'],
 	action: {
 		default_popup: 'index.html',
 		default_icon: 'public/disabled/insanerac_d9.png',
 	},
 	web_accessible_resources: [
 		{
-			resources: ['public/enabled/*.png', 'public/disabled/*.png'],
+			resources: ['public/enabled/*', 'public/disabled/*'],
 			matches: ['<all_urls>'],
 		},
 	],
 	content_scripts: [
 		{
-			matches: ['<all_urls>'],
-			js: ['./src/lib/content_scripts/autopredictor.tsx'],
+			matches: [
+				'*://*.twitch.tv/tobs',
+				'*://*.twitch.tv/kori',
+				'*://*.twitch.tv/plss',
+			],
+			js: ['./src/lib/content_scripts/autopredict.tsx'],
 		},
 		{
-			matches: ['<all_urls>'],
-			js: ['./src/lib/content_scripts/socket/websocket.tsx'],
+			matches: [
+				'*://*.twitch.tv/tobs',
+				'*://*.twitch.tv/kori',
+				'*://*.twitch.tv/plss',
+			],
+			js: ['./src/lib/content_scripts/socket/websocket.ts'],
 		},
 	],
 	// 	{

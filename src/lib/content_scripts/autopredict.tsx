@@ -9,10 +9,13 @@ export const predict = () => {
 	let stageDObserving: boolean = false;
 
 	const res = new Promise((resolve, reject) => {
-		const startA = () => {
+		const startA = (noObserve: boolean = false) => {
 			const observerA = new MutationObserver((_) => {
 				observerA.disconnect();
+                funcA();
+			});
 
+            const funcA = () => {
 				const channelPointsQuery = document.querySelector(
 					'button[aria-label*="Click to learn how to earn more"]'
 				) as HTMLButtonElement;
@@ -24,6 +27,7 @@ export const predict = () => {
 						?.filter((val) => val != '')[0]
 						.replace(/,/g, '');
 
+                    console.info('Channel points:', points);
 					console.info('[+] A okay -> starting B');
 
 					// prop drilling 2.0(tm): drill the points count down through the mutation observer chain
@@ -33,16 +37,24 @@ export const predict = () => {
 						'Cannot find the required DOM element for Observer A.'
 					);
 				}
-			});
 
+            }
+
+            if (!noObserve) {
 			// we might prefer to specifically observe the popup, but we work with document.body for now to avoid
 			// adding too much complexity similarly, i dont think we have to configure observation for all of those options,
 			// but it doesn't seem to be causing issues
-			observerA.observe(document.body, {
-				childList: true,
-				subtree: true,
-				attributes: true,
-			});
+			    observerA.observe(document.body, {
+			    	childList: true,
+			    	subtree: true,
+			    	attributes: true,
+			    });
+            } else {
+
+                // start immediate if already mutated
+                funcA();
+            }
+
 		};
 
 		const startB = (channelPoints: string) => {
@@ -181,14 +193,24 @@ export const predict = () => {
 			return reject('Cannot find channel points toggle popup button.');
 		}
 
-		channelPointsButton.click();
-		startA(); // start the observer chain
+        const alreadyOpen = document.querySelector(
+            'div[aria-labelledby="channel-points-reward-center-header"]'
+        )as HTMLDivElement;
+
+        console.log('BUTTONS ON SCREEN?: ', alreadyOpen, channelPointsButton);
+
+        if (!alreadyOpen) {
+		    channelPointsButton.click();
+        }
+
+
+		startA(alreadyOpen ? true : false); // start the observer chain
 
 		// we should be able to run the required functions in like, a handful
         // of seconds at most
 		setTimeout(() => {
 			reject(
-				'Timeout exceeded: DOM mutations expected to occur much faster :('
+				'(10 seconds elapsed since DOM interaction start): Timeout exceeded: DOM mutations expected to occur much faster :('
 			);
 		}, 10_000);
 	});

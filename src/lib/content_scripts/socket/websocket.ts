@@ -26,7 +26,7 @@ class WebSocketUtil {
 			this.sock.onopen = () => {
 				console.log('[+] Socket initiated, waiting for OPEN state.');
 				if (this.sock === null) {
-					reject('idk lmao');
+					reject('idk what went wrong here but its not happening lmao');
 					return;
 				}
 

@@ -2,8 +2,9 @@ import { createSignal, onMount, type Component } from 'solid-js';
 // import { debugGramble } from './lib/worker';
 import { Toggle } from './lib/components/Toggle';
 import { Auth } from './lib/components/Auth';
-import { revoke } from './lib/content_scripts/requests';
+import { validate } from './lib/content_scripts/requests';
 import { ClearLocal } from './lib/components/ClearLocal';
+import { gramble } from './lib/worker';
 
 export interface UserData {
 	client_id?: string;
@@ -13,17 +14,26 @@ export interface UserData {
 	user_id?: string;
 }
 
+interface AuthErr {
+	error: boolean;
+	message?: string;
+}
+
+const DEBUG = true;
+
 const App: Component = () => {
+	const [err, setErr] = createSignal<AuthErr>({ error: false, message: '' });
 	const [state, setState] = createSignal(false);
 	const [token, setToken] = createSignal('');
 	const [user, setUser] = createSignal<UserData>({});
 
 	onMount(() => {
 		chrome.runtime.sendMessage({ action: 'curr_auth' }, (res) => {
-			console.log('auth res: ', res);
 			if (res.status === 'error') {
 				if (res.message === 'expired') {
-					// re-validate
+					validate(res.token);
+				} else {
+					setErr({ error: true, message: res.message });
 				}
 			} else if (res.status === 'complete' && res.user && res.token) {
 				setToken(res.token);
@@ -32,14 +42,16 @@ const App: Component = () => {
 		});
 
 		chrome.runtime.sendMessage({ action: 'curr_state' }, (res) => {
-			console.log(res);
-			setState(res.data);
+			setState(res.state);
 		});
 	});
 
 	const fetchToken = async () => {
 		chrome.runtime.sendMessage({ action: 'auth' }, (res) => {
-			console.log(res);
+			if (res.status === 'error') {
+				setErr({ error: true, message: res.message });
+				return;
+			}
 			setToken(res.token);
 			setUser(res.user);
 		});
@@ -50,8 +62,7 @@ const App: Component = () => {
 			chrome.runtime.sendMessage({ action: 'new_state' }, () => {});
 		}
 
-		chrome.runtime.sendMessage({ action: 'revoke' }, (_res) => {
-			console.log(_res);
+		chrome.runtime.sendMessage({ action: 'revoke' }, (_) => {
 			setToken('');
 			setUser({});
 		});
@@ -59,9 +70,7 @@ const App: Component = () => {
 
 	const toggle = () => {
 		chrome.runtime.sendMessage({ action: 'new_state' }, (res) => {
-			console.log(res);
-
-			setState(res.data);
+			setState(res.state);
 		});
 	};
 
@@ -69,12 +78,16 @@ const App: Component = () => {
 		chrome.runtime.sendMessage(
 			{ action: 'new_state', force: false },
 			(res) => {
-				console.log(res);
-
-				setState(res.data);
+				setState(res.state);
 				logout();
 			}
 		);
+	};
+
+	const clearErr = () => {
+		chrome.storage.local.remove(['auth']);
+		setErr({ error: false, message: '' });
+		return;
 	};
 
 	return (
@@ -85,6 +98,9 @@ const App: Component = () => {
 				</span>
 			</div>
 			<div class='w-full'></div>
+			{DEBUG && (
+				<button onclick={() => gramble(true)}>debug gram,bler</button>
+			)}
 			<div class='m-1 flex flex-col'>
 				<Auth
 					token={token()}
@@ -99,6 +115,27 @@ const App: Component = () => {
 					state={state()}
 					handlerFn={toggle}
 				/>
+
+				{err().error ?
+					<div>
+						<div class='mx-6 mt-8 flex flex-col items-center justify-center rounded-md border border-red-400 p-2 text-sm'>
+							<div class='flex w-full flex-row justify-between px-2 text-red-400'>
+								<div class='p-2 text-red-300'>
+									Login failed:
+								</div>
+								<button
+									class='-pt-1 relative -right-4 -top-2 rounded-md p-2 px-4 transition-all duration-200 ease-in-out hover:text-red-400/55'
+									onclick={clearErr}
+								>
+									x
+								</button>
+							</div>
+							<p class='mx-4 mt-3 px-2 pb-2 text-xs italic text-red-100/90'>
+								{err().message}
+							</p>
+						</div>
+					</div>
+				:	<></>}
 			</div>
 			<div class='flex flex-row-reverse px-2 py-1'>
 				<ClearLocal handleParentEvent={clearAllData} />

@@ -1,12 +1,11 @@
 {
-  "name": "vite-template-solid",
-  "version": "0.0.0",
+  "name": "kori coinflip",
+  "version": "0.1.1",
   "description": "",
   "scripts": {
-    "start": "vite",
+    "start": "nodemon",
     "dev": "nodemon",
-    "build": "vite build",
-    "serve": "vite preview"
+    "build": "vite build"
   },
   "license": "MIT",
   "type": "module",
@@ -17,19 +16,17 @@
     "@types/websocket": "^1.0.10",
     "@types/ws": "^8.5.12",
     "autoprefixer": "^10.4.19",
+    "dotenv": "^16.4.5",
+    "nodemon": "^3.1.4",
     "postcss": "^8.4.40",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.5",
     "solid-devtools": "^0.29.2",
+    "solid-js": "^1.8.11",
     "tailwindcss": "^3.4.7",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
-    "vite-plugin-solid": "^2.8.2"
-  },
-  "dependencies": {
-    "dotenv": "^16.4.5",
-    "nodemon": "^3.1.4",
-    "solid-js": "^1.8.11",
+    "vite-plugin-solid": "^2.8.2",
     "ws": "^8.18.0"
   }
 }

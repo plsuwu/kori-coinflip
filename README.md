@@ -15,10 +15,9 @@ surely...
 
 ### pre-built
 
-~~- download a packed `kori_coinflip.crx` from releases, then navigate to `chrome://extensions`~~
-~~- turn on developer mode and drag+drop it from your local folder into the extensions page to install.~~ 
-
-just build from source for now bc it don't pack correctly >:(
+- download a packed `kori_coinflip-[tag].crx` from releases, then navigate to `chrome://extensions`
+- turn on developer mode and drag+drop it from your local folder into the extensions page to install.
+  - confirm the safety check if necessary, its safe i swear :)   
 
 ### build from source
 

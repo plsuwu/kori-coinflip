@@ -11,14 +11,10 @@ export interface UserInfo {
 	user_id: string;
 }
 
-// export const debugGramble = () => {
-// 	gramble();
-// };
-
-const gramble = () => {
+export const gramble = (debug: boolean = false) => {
 	// double check that we intend to gramble before actually grambling
 	chrome.runtime.sendMessage({ action: 'curr_state' }, (res) => {
-		if (res.data === false) {
+		if (res.state === false && !debug) {
 			console.log('[x] Gramble disabled, not grambling due to this.');
 			return;
 		} else {
@@ -28,24 +24,27 @@ const gramble = () => {
 };
 
 const predictor = () => {
-	// query all tabs for a tab that contains the target url
+	// query all tabs for a tab that contains the target url, then sending the predict trigger
+	// message to the content script on that tab if one is found
 	chrome.tabs.query({}, (tabs) => {
 		if (tabs.every((t) => t.url !== STREAM_LINK)) {
 			console.log('[x] No Kori tabs open, not grambling.');
 			return;
 		}
 
-		tabs.forEach((t) => {
-			if (t.url === STREAM_LINK) {
-				console.log('[+] Kori tab found:', t);
+        // if multiple kori tabs are open, use the first one
+        //
+        // eventually want to get it so that if we hit the `chrome.runtime.lastError` and there
+        // are multiple tabs, we can try injecting ourselves into another tab (this shouldn't
+        // really happen tho)
+		const kori = tabs.filter((tab) => tab.url === STREAM_LINK)[0];
 
-				// maybe have an option to open kori in the background
-				if (!t.id) {
-					console.error("[!] Unable to fetch the ID of Kori's tab.");
-					return;
-				}
-
-				chrome.tabs.sendMessage(t.id, { action: 'predict' }, (res) => {
+		if (kori) {
+			console.log('[+] Using this Kori tab:', kori);
+			chrome.tabs.sendMessage(
+				kori.id as number,
+				{ action: 'predict' },
+				(_) => {
 					if (chrome.runtime.lastError) {
 						console.error(
 							'Error sending message:',
@@ -55,9 +54,9 @@ const predictor = () => {
 					}
 
 					return;
-				});
-			}
-		});
+				}
+			);
+		}
 	});
 };
 
@@ -65,7 +64,9 @@ const ws = new WebSocketUtil(IRC_SOCKET_URL);
 
 const getIconPath = (state: boolean): string => {
 	const type = state ? 'enabled' : 'disabled';
-	const item = Math.ceil(Math.random() * 11); // pull a random koriINSANERACC frame
+
+	// index random koriINSANERACC frame
+	const item = Math.ceil(Math.random() * 11);
 
 	return `public/${type}/insanerac_${type[0]}${item}.png`;
 };
@@ -87,8 +88,6 @@ chrome.runtime.onStartup.addListener(() => {
 
 const toggleState = (curr: boolean) => {
 	const newState = curr ? false : true;
-	chrome.storage.local.set({ state: newState });
-
 	return newState;
 };
 
@@ -121,7 +120,6 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 				);
 
 				const newState = toggleState(false);
-				// chrome.storage.local.set({ state: false });
 				next({
 					status: 'completed',
 					state: newState,
@@ -134,7 +132,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 	if (req.action === 'curr_state') {
 		chrome.storage.local.get(['state'], (res) => {
 			if (res.state != null) {
-				next({ status: 'complete', data: res.state });
+				next({ status: 'complete', state: res.state });
 			}
 		});
 	}
@@ -143,88 +141,132 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		chrome.storage.local.get(['state'], (res) => {
 			if (res.state != null) {
 				const newState = toggleState(res.state);
-				next({ status: 'complete', data: newState });
+				chrome.storage.local.set({ state: newState });
+				next({ status: 'complete', state: newState });
 			}
 		});
 	}
 
 	if (req.action === 'auth') {
 		chrome.storage.local.get(['auth', 'auth_expiry'], (res) => {
-			if (!res.auth) {
+			const writeValidity = (auth: string) => {
+				validate(auth).then((res) => {
+					if (res.status === 'error') {
+						let message: string =
+							'Unhandled error, please try again momentarily.';
+						switch (res.message?.status) {
+							case 401:
+								message =
+									"(401) TTV couldn't validate the login token:invalid credentials supplied.";
+								break;
+							case 500:
+								message =
+									"(500) TTV couldn't validate the login token: Server error (try again shortly).";
+								break;
+							default:
+								break;
+						}
+						chrome.storage.local.set({
+							auth: 'error',
+							message,
+						});
+						next({ status: 'error', message });
+						return;
+					}
+					const auth = res.token;
+					const user = res.user;
+
+					// get expiry to work when time permits:
+					// const auth_expiry = Date.now() + 3_600_000; // revalidate each hour: 3,600,000ms = ~60mins
+					const auth_expiry = Date.now() + 1;
+
+					// try getting user color for the UI if/when bothered
+
+					chrome.storage.local.set({
+						auth,
+						user,
+						auth_expiry,
+					});
+
+					next({
+						status: 'completed',
+						message: null,
+						token: auth,
+						user: user,
+					});
+				});
+			};
+
+			if (!res.auth || res.auth === 'error') {
 				chrome.identity.launchWebAuthFlow(
 					{ url: auth_uri, interactive: true },
 					(res) => {
+						let status = 'complete';
+						let message: any = null;
+
+						if (chrome.runtime.lastError) {
+							console.error(
+								'[!] Error during OAuth login: ',
+								chrome.runtime.lastError
+							);
+
+							status = 'error';
+							message =
+								'OAuth login error: ' +
+								chrome.runtime.lastError.message?.toLowerCase();
+
+							chrome.storage.local.set({
+								auth: status,
+								message: message,
+							});
+
+							next({ status, message });
+							return;
+						}
+
 						const re = /#access_token=(.*?)&/;
 						const oauth = res?.match(re)?.[1];
 
-						// condense this + the else block
-						const _valid = validate(oauth as string).then((res) => {
-							const auth = res.token;
-							const user = res.user;
-
-							// get expiry to work when time permits:
-							const auth_expiry = Date.now() + 3_600_000; // revalidate each hour: 3,600,000ms = ~60mins
-
-							// try getting user color for the UI if/when bothered
-
-							chrome.storage.local.set({
-								auth,
-								user,
-								auth_expiry,
-							});
-
-							next({
-								status: 'complete',
-								token: auth,
-								user: user,
-							});
-						});
+						// calls the validate() fetch fn and writes the result to local
+						// storage + responds to the messager with the result
+						writeValidity(oauth as string);
 					}
 				);
 			} else {
 				// this is good enough for now
 				console.log('[+] Revalidating auth.');
-				const _valid = validate(res.auth as string).then((res) => {
-					const auth = res.token;
-					const user = res.user;
-					const auth_expiry = Date.now() + 3_600_000;
-
-					chrome.storage.local.set({ auth, user, auth_expiry });
-					next({
-						status: 'complete',
-						token: res.token,
-						user: res.user,
-					});
-				});
+				writeValidity(res.auth as string);
 			}
 		});
 	}
 
 	if (req.action === 'curr_auth') {
-		chrome.storage.local.get(['auth', 'user', 'auth_expiry'], (res) => {
-			if (res.user && res.token && res.auth_expiry <= Date.now()) {
-				// pass token so we can revoke it
-				next({
-					status: 'error',
-					message: 'expired',
-					token: res.token,
-				});
-				return;
-			} else {
-				// we send a response with the undefined content when user auth info
-				// isn't saved locally and handle that case in the sender
-				next({
-					status: 'complete',
-					token: res.auth,
-					user: res.user,
-				});
+		chrome.storage.local.get(
+			['auth', 'user', 'auth_expiry', 'message'], // cbf doing expiry.
+			(res) => {
+				if (res.auth && res.auth === 'error') {
+					next({
+						status: 'error',
+						message: res.message,
+					});
+
+					return;
+				} else {
+					// we send a response with the undefined content when user auth info
+					// isn't saved locally and handle that case in the sender
+					next({
+						status: 'complete',
+						token: res.auth,
+						user: res.user,
+					});
+				}
 			}
-		});
+		);
 	}
 
 	if (req.action === 'revoke') {
 		chrome.storage.local.get(['auth', 'user'], (res) => {
-			const _revoked = revoke(res.auth).then((res) => {
+			revoke(res.auth).then((res) => {
 				if (res.status === 'complete') {
 					chrome.storage.local.remove([
 						'auth',
@@ -242,12 +284,10 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
 	if (namespace === 'local') {
-
 		// when a new enabled/disabled state is written to localstorage, check its boolean value and
 		// run the relevant handler for that state
 		if (changes.state?.newValue != null) {
-
-            // guard for non-bool state and reset to a non-destructive value
+			// guard for non-bool state and reset to a non-destructive value
 			if (typeof changes.state?.newValue !== typeof true) {
 				console.error(
 					'[!] Returning to default state (disabled): the state was changed to an unknown type.',
@@ -283,8 +323,10 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 
 					// ws.connect resolves when a `!brb` is received, at which point we call the event
 					// loop again, reconnecting to the socket
-                    //
-                    // this is just barely recognisable as javascript i fucking hate this nightmarish callback hell
+					//
+					// this entire program is just synchronous callbacks to what SHOULD be async functions and
+					// its barely recognisable as javascript; the combination of websockets + chrome api + twitch
+					// api have made this just an awful experience
 					const loop = () => {
 						chrome.storage.local.get(['state'], (res) => {
 							if (res.state) {

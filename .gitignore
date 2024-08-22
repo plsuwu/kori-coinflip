@@ -1,7 +1,5 @@
-
 dist
 kori_coinflip_0*
-*.crx
 *.pem
 
 .solid

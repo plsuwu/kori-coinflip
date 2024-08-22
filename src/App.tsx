@@ -19,7 +19,7 @@ interface AuthErr {
 	message?: string;
 }
 
-const DEBUG = true;
+const DEBUG = false;
 
 const App: Component = () => {
 	const [err, setErr] = createSignal<AuthErr>({ error: false, message: '' });

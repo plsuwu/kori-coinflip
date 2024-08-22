@@ -15,9 +15,11 @@ surely...
 
 ### pre-built
 
-- download a packed `kori_coinflip-[tag].crx` from releases, then navigate to `chrome://extensions`
-- turn on developer mode and drag+drop it from your local folder into the extensions page to install.
-  - confirm the safety check if necessary, its safe i swear :)   
+- download a packed `kori_coinflip-[tag].crx` from releases, 
+- navigate to `chrome://extensions`,
+- turn on developer mode
+- drag+drop the `.crx` file into the extensions window from your local filesystem.
+  - and also confirm the safety check if necessary its safe i swear you can trust me:)   
 
 ### build from source
 
@@ -29,6 +31,9 @@ clone the repo, `cd` into it and build:
 ```bash
 git clone https://github.com/plsuwu/kori-coinflip
 cd kori-coinflip
+
+# note that yarn can be a drop-in replacement for bun
+bun install --frozen-lockfile
 bun run build
 ```
 
@@ -36,3 +41,6 @@ then in your browser:
 - navigate to `chrome://extensions` (or your browser's equivalent)
 - turn on developer mode
 - click `load unpacked` and select the `dist` directory 
+
+> TTV requires a specific callback URL during OAuth, so the extension will not properly run the oauth flow
+> if you build & pack yourself, though this SHOULD run fine when unpacked. 

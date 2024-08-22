@@ -42,11 +42,11 @@ class WebSocketUtil {
 							if (this.sock !== null) {
 								setTimeout(() => {
 									this.sock?.send('PING');
-									ping();
-
 									console.log(
 										`[->]<${new Date(Date.now()).toLocaleTimeString()}> Client PING frame sent.`
 									);
+									
+									ping(); // actually run our console.log() prior to resetting loop 
 								}, this.jitter());
 							} else {
 								return;

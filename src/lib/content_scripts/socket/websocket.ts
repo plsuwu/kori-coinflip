@@ -135,15 +135,15 @@ class WebSocketUtil {
 			const matches = re.exec(msg);
 
 			if (matches) {
-				console.log(matches);
+				// console.log(matches);
 				const broadcaster = `${channel}!${channel}@${channel}`;
 				if (
 					matches[1] === broadcaster &&
 					matches[2] === channel &&
 					matches[3].includes(run)
 				) {
-					console.log('[#] Kori brbing, grambling...');
-					return true;
+					console.log('[#] Kori brbing!');
+                    return true;
 				}
 			}
 		} else if (
@@ -179,8 +179,8 @@ class WebSocketUtil {
 	}
 
 	private jitter(): number {
-		const timer = 240000; // ms -> 4 mins
-		const randJitter = Math.floor(Math.random() * 60000); // jitter up to 1 min
+		const timer = 180000; // ms -> 3 mins
+		const randJitter = Math.floor(Math.random() * 65000); // jitter up to 1min 30sec
 		const mins = new Date(Date.now() + (timer + randJitter));
 
 		console.log(

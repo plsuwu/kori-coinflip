@@ -220,7 +220,8 @@ export const predict = () => {
 
 chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 	if (req.action === 'predict') {
-		predict()
+        setTimeout(() => {
+		    predict()
 			.then((res) => {
 				sendResponse({ status: 'complete', channelPoints: res });
 			})
@@ -228,6 +229,7 @@ chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 				console.error('[-] Error in predict fn:', error);
 				sendResponse({ status: 'error', message: error });
 			});
+        }, 1500)
 	}
 
 	return true;

@@ -19,13 +19,12 @@ interface AuthErr {
 	message?: string;
 }
 
-const DEBUG = false;
-
 const App: Component = () => {
 	const [err, setErr] = createSignal<AuthErr>({ error: false, message: '' });
 	const [state, setState] = createSignal(false);
 	const [token, setToken] = createSignal('');
 	const [user, setUser] = createSignal<UserData>({});
+	const [debug, setDebug] = createSignal<boolean>(false);
 
 	onMount(() => {
 		chrome.runtime.sendMessage({ action: 'curr_auth' }, (res) => {
@@ -44,6 +43,9 @@ const App: Component = () => {
 		chrome.runtime.sendMessage({ action: 'curr_state' }, (res) => {
 			setState(res.state);
 		});
+		chrome.runtime.sendMessage({ action: 'get_debug' }, (res) => {
+			setDebug(res.debug);
+		});
 	});
 
 	const fetchToken = async () => {
@@ -54,6 +56,12 @@ const App: Component = () => {
 			}
 			setToken(res.token);
 			setUser(res.user);
+		});
+	};
+
+	const toggleDebugger = () => {
+		chrome.runtime.sendMessage({ action: 'set_debug' }, (res) => {
+			setDebug(res.debug);
 		});
 	};
 
@@ -98,7 +106,7 @@ const App: Component = () => {
 				</span>
 			</div>
 			<div class='w-full'></div>
-			{DEBUG && (
+			{debug() && (
 				<button onclick={() => gramble(true)}>debug gram,bler</button>
 			)}
 			<div class='m-1 flex flex-col'>
@@ -137,8 +145,19 @@ const App: Component = () => {
 					</div>
 				:	<></>}
 			</div>
-			<div class='flex flex-row-reverse px-2 py-1'>
+			<div class='flex flex-row-reverse justify-around px-px py-1'>
 				<ClearLocal handleParentEvent={clearAllData} />
+				<div class=''>
+					<button onclick={toggleDebugger}>
+						debug (
+						<span
+							class={`${debug() ? 'text-kori-light-blue' : 'text-kori-mid'}`}
+						>
+							{debug() ? 'on' : 'off'}
+						</span>
+						)
+					</button>
+				</div>
 			</div>
 		</div>
 	);

@@ -1,5 +1,6 @@
 const TTV_CLIENT_ID = 'hzjlx3hy3h0f863czefkivrlfs3f6a';
 const AUTH_CALLBACK_URI = `https://${chrome.runtime.id}.chromiumapp.org/ttv_callback`;
+// const AUTH_CALLBACK_URI = `http://localhost/ttv_callback`;
 const RES_TYPE = 'token';
 const AUTH_SCOPE = 'chat%3Aread';
 

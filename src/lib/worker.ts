@@ -74,7 +74,7 @@ const getIconPath = (state: boolean): string => {
 chrome.runtime.onInstalled.addListener(() => {
 	// on extension install, clear any existing data and re-init
 	chrome.storage.local.clear();
-	chrome.storage.local.set({ state: false });
+	chrome.storage.local.set({ state: false, debug: false });
 });
 
 chrome.runtime.onStartup.addListener(() => {
@@ -98,10 +98,21 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		gramble();
 	}
 
-	if (req.action === 'debug') {
-		console.log('DEBUGGING CONTENT SCRIPT:', req.sent_by, req);
-		next({ caught: 'true', message: 'ok' });
-	}
+	if (req.action === 'get_debug') {
+        chrome.storage.local.get(['debug'], (res) => {
+            next({ status: 'complete', debug: res.debug });
+        })
+    }
+
+    if (req.action === 'set_debug') {
+        chrome.storage.local.get(['debug'], (res) => {
+            const newDebug = res.debug ? false : true;
+            chrome.storage.local.set({ debug: newDebug });
+
+            next({ status: 'complete', debug: newDebug });
+        });
+    }
+
 
 	if (req.action === 'sock_closed') {
 		chrome.storage.local.get(['state'], (res) => {
@@ -263,6 +274,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 			}
 		);
 	}
+
 
 	if (req.action === 'revoke') {
 		chrome.storage.local.get(['auth', 'user'], (res) => {

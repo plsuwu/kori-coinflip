@@ -13,6 +13,7 @@ export interface UserInfo {
 
 export const gramble = (debug: boolean = false) => {
 	// double check that we intend to gramble before actually grambling
+    // should only occur when manually clicking in debug mode
 	chrome.runtime.sendMessage({ action: 'curr_state' }, (res) => {
 		if (res.state === false && !debug) {
 			console.log('[x] Gramble disabled, not grambling due to this.');
@@ -24,19 +25,18 @@ export const gramble = (debug: boolean = false) => {
 };
 
 const predictor = () => {
-	// query all tabs for a tab that contains the target url, then sending the predict trigger
-	// message to the content script on that tab if one is found
+	// query all tabs for one containing our target url and the predict action
+	// message to the content script in that tab
 	chrome.tabs.query({}, (tabs) => {
 		if (tabs.every((t) => t.url !== STREAM_LINK)) {
-			console.log('[x] No Kori tabs open, not grambling.');
+			console.log('[x] No Kori tabs open, unable to gramble.');
 			return;
 		}
 
         // if multiple kori tabs are open, use the first one
         //
-        // eventually want to get it so that if we hit the `chrome.runtime.lastError` and there
-        // are multiple tabs, we can try injecting ourselves into another tab (this shouldn't
-        // really happen tho)
+        // eventually want to try injecting ourselves into a different kori tab on hitting a
+        // `chrome.runtime.lastError`, though this probably shouldn't happen
 		const kori = tabs.filter((tab) => tab.url === STREAM_LINK)[0];
 
 		if (kori) {
@@ -93,15 +93,26 @@ const toggleState = (curr: boolean) => {
 
 // make this a switch statement lmaooo
 chrome.runtime.onMessage.addListener((req, _, next) => {
+
+    // runs the main gramble action
 	if (req.action === 'gramble') {
 		console.log('[+] Flipping...');
 		gramble();
 	}
 
+    // debugger value getter & setter
 	if (req.action === 'get_debug') {
         chrome.storage.local.get(['debug'], (res) => {
             next({ status: 'complete', debug: res.debug });
         })
+    }
+    if (req.action === 'set_debug') {
+        chrome.storage.local.get(['debug'], (res) => {
+            const newDebug = res.debug ? false : true;
+            chrome.storage.local.set({ debug: newDebug });
+
+            next({ status: 'complete', debug: newDebug });
+        });
     }
 
     if (req.action === 'set_debug') {
@@ -113,7 +124,8 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
         });
     }
 
-
+    // sock self-closed checker (if the socket was closed by the socket handler itself
+    // we want this to reflect in the extension's state
 	if (req.action === 'sock_closed') {
 		chrome.storage.local.get(['state'], (res) => {
 			if (res.state != null && res.state === false) {
@@ -140,6 +152,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		});
 	}
 
+    // extension state (enabled/disabled) getter & setter
 	if (req.action === 'curr_state') {
 		chrome.storage.local.get(['state'], (res) => {
 			if (res.state != null) {
@@ -158,6 +171,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		});
 	}
 
+    // authentication/twitch oauth flow and credential storage
 	if (req.action === 'auth') {
 		chrome.storage.local.get(['auth', 'auth_expiry'], (res) => {
 			const writeValidity = (auth: string) => {
@@ -165,6 +179,8 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 					if (res.status === 'error') {
 						let message: string =
 							'Unhandled error, please try again momentarily.';
+
+                        // report basic login errors
 						switch (res.message?.status) {
 							case 401:
 								message =
@@ -191,7 +207,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 					// const auth_expiry = Date.now() + 3_600_000; // revalidate each hour: 3,600,000ms = ~60mins
 					const auth_expiry = Date.now() + 1;
 
-					// try getting user color for the UI if/when bothered
+					// could do a user color for the UI if/when bothered
 
 					chrome.storage.local.set({
 						auth,
@@ -208,6 +224,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 				});
 			};
 
+            // report errors or otherwise undefined behavior
 			if (!res.auth || res.auth === 'error') {
 				chrome.identity.launchWebAuthFlow(
 					{ url: auth_uri, interactive: true },
@@ -239,7 +256,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 						const oauth = res?.match(re)?.[1];
 
 						// calls the validate() fetch fn and writes the result to local
-						// storage + responds to the messager with the result
+						// storage, responding to the runtime message with the result
 						writeValidity(oauth as string);
 					}
 				);
@@ -275,7 +292,8 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		);
 	}
 
-
+    // report the logout to twitch API to stop the token from being used in
+    // future sessions
 	if (req.action === 'revoke') {
 		chrome.storage.local.get(['auth', 'user'], (res) => {
 			revoke(res.auth).then((res) => {
@@ -294,6 +312,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 	return true;
 });
 
+// runtime listener for changed `{ key: value }` pairs in chrome's storage
 chrome.storage.onChanged.addListener((changes, namespace) => {
 	if (namespace === 'local') {
 		// when a new enabled/disabled state is written to localstorage, check its boolean value and
@@ -333,12 +352,14 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 						channel
 					);
 
-					// ws.connect resolves when a `!brb` is received, at which point we call the event
-					// loop again, reconnecting to the socket
+					// ws.connect promise holds a loop that resolves when a `!brb` is received.
+                    // when the ws.connect function resolves, we call `predictor()` before we disconnect
+                    // & re-connect by calling the ws.connect loop again. this loops until the extension state is
+                    // toggled false.
 					//
-					// this entire program is just synchronous callbacks to what SHOULD be async functions and
-					// its barely recognisable as javascript; the combination of websockets + chrome api + twitch
-					// api have made this just an awful experience
+					// 1/3rd of this program (and chrome extension javascript generally) is wrapping chrome
+                    // runtime messages in `.then(() ...` callbacks, which is making it very difficult to return
+                    // values from async function calls >:(
 					const loop = () => {
 						chrome.storage.local.get(['state'], (res) => {
 							if (res.state) {

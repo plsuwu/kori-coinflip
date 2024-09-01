@@ -106,6 +106,14 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
             next({ status: 'complete', debug: res.debug });
         })
     }
+    if (req.action === 'set_debug') {
+        chrome.storage.local.get(['debug'], (res) => {
+            const newDebug = res.debug ? false : true;
+            chrome.storage.local.set({ debug: newDebug });
+
+            next({ status: 'complete', debug: newDebug });
+        });
+    }
 
     if (req.action === 'set_debug') {
         chrome.storage.local.get(['debug'], (res) => {

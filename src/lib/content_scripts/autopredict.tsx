@@ -210,7 +210,7 @@ export const predict = () => {
         // of seconds at most
 		setTimeout(() => {
 			reject(
-				'(10 seconds elapsed since DOM interaction start): Timeout exceeded: DOM mutations expected to occur much faster :('
+				'(10 seconds elapsed since DOM interaction start) -> Timeout exceeded: DOM mutations expected to occur much faster :('
 			);
 		}, 10_000);
 	});
@@ -220,6 +220,8 @@ export const predict = () => {
 
 chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 	if (req.action === 'predict') {
+        // wait out the slight delay so that the chat message can trigger
+        // the streamelements function (or whatever idk)
         setTimeout(() => {
 		    predict()
 			.then((res) => {

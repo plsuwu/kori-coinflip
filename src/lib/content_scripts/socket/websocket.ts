@@ -4,6 +4,13 @@ interface AuthData {
 	channel: string;
 }
 
+enum SockState {
+	Connecting = 0,
+	Open = 1,
+	Closing = 2,
+	Closed = 3,
+}
+
 // websocket connection handler
 class WebSocketUtil {
 	private sock: WebSocket | null = null;
@@ -20,16 +27,20 @@ class WebSocketUtil {
 				reject('[!] Already connected and listening.');
 				return;
 			}
+
 			this.auth = this.templatedAuth(auth.user, auth.token, auth.channel);
 			this.sock = new WebSocket(this.url);
-
 			this.sock.onopen = () => {
 				console.log('[+] Socket initiated, waiting for OPEN state.');
 				if (this.sock === null) {
-					reject('idk what went wrong here but its not happening lmao');
+					reject(
+						'idk what went wrong here but its not happening lmao'
+					);
 					return;
 				}
 
+                // poll for websocket.readyState.OPEN before allowing socket handlers
+                // to do handling things
 				waitOnSock(this.sock).then((_) => {
 					if (this.auth && this.ready()) {
 						for (const msg of this.auth) {
@@ -41,12 +52,15 @@ class WebSocketUtil {
 						const ping = () => {
 							if (this.sock !== null) {
 								setTimeout(() => {
-									this.sock?.send('PING');
-									ping();
+									// re-check after timeout
+									if (this.sock !== null) {
+										this.sock.send('PING');
+										console.log(
+											`[->]<${new Date(Date.now()).toLocaleTimeString()}> Client PING frame sent.`
+										);
 
-									console.log(
-										`[->]<${new Date(Date.now()).toLocaleTimeString()}> Client PING frame sent.`
-									);
+										ping();
+									}
 								}, this.jitter());
 							} else {
 								return;
@@ -118,7 +132,7 @@ class WebSocketUtil {
 			`NICK ${login}`,
 			`USER ${login} 8 * :${login}`,
 			`JOIN #${channel}`,
-        ];
+		];
 
 		return template;
 	}
@@ -134,8 +148,8 @@ class WebSocketUtil {
 				/^.*?:(\w+!\w+@\w+)\.tmi\.twitch\.tv\sPRIVMSG\s#(\w+)\s:(.*$)/gm;
 			const matches = re.exec(msg);
 
+			// check if from kori in /kori and contains the gramble trigger string
 			if (matches) {
-				// console.log(matches);
 				const broadcaster = `${channel}!${channel}@${channel}`;
 				if (
 					matches[1] === broadcaster &&
@@ -143,7 +157,22 @@ class WebSocketUtil {
 					matches[3].includes(run)
 				) {
 					console.log('[#] Kori brbing!');
-                    return true;
+					return true;
+				}
+			} else {
+				// otherwise we just log the chatter and message
+				const re =
+					/^.*?:(\w+)!\w+@\w+\.tmi\.twitch\.tv\sPRIVMSG\s#\w+\s:(.*$)/gm;
+				const matches = re.exec(msg);
+
+				if (matches) {
+					console.log(
+						`[<-] Sock recv msg:  <${matches[1]}>: '${matches[2]}'`
+					);
+				} else {
+					console.log(
+						'[!<] Sock recv chat msg, but an error occurred while parsing.'
+					);
 				}
 			}
 		} else if (
@@ -160,6 +189,7 @@ class WebSocketUtil {
 				'\n(https://dev.twitch.tv/docs/chat/irc/#irc-command-reference)'
 			);
 		} else if (msg.includes('NOTICE')) {
+			// probably a sub anniversary or i think maybe a bits redeem
 			console.log('[<-] Sock recv NOTICE:');
 			msg.trim()
 				.split('\r\n')
@@ -179,26 +209,19 @@ class WebSocketUtil {
 	}
 
 	private jitter(): number {
-		const timer = 180000; // ms -> 3 mins
-		const randJitter = Math.floor(Math.random() * 65000); // jitter up to 1min 30sec
-		const mins = new Date(Date.now() + (timer + randJitter));
+		const timer = 180000; // 3 mins
+		const randJitter = Math.floor(Math.random() * 65000); // jitter up to 1 min 30 sec
+		const mins = new Date(Date.now() + (timer + randJitter)); // total max timeout => 4m30s
 
 		console.log(
-			`[+]<${new Date(Date.now()).toLocaleTimeString()}> Next PING in ${mins.toLocaleTimeString()}`
+			`[+]<${new Date(Date.now()).toLocaleTimeString()}> Next PING at ${mins.toLocaleTimeString()}`
 		);
 		return timer + randJitter;
 	}
 }
 
-enum SockState {
-	Connecting = 0,
-	Open = 1,
-	Closing = 2,
-	Closed = 3,
-}
-
-// poll the socket every 5ms (blocking ws sender execution) until OPEN readyState (by default,
-// any state if specified)
+// poll the socket every 5ms (blocking ws sender execution) until OPEN readyState (OPEN if param is null,
+// or any specified state matching WebSocket.readyState.<STATE>)
 async function waitOnSock(sock: WebSocket | null, state: SockState = 1) {
 	setTimeout(function () {
 		if (sock && sock.readyState === state) {

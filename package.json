@@ -1,7 +1,7 @@
 {
   "name": "Kori-Coinflip",
-  "version": "0.1.2",
-  "description": "Chrome extension to coinflip all of your channel points the instant kori starts a break",
+  "version": "0.1.3",
+  "description": "Chrome extension to automatically coinflip all of your channel points the instant Kori starts a break",
   "scripts": {
     "start": "nodemon",
     "dev": "nodemon",

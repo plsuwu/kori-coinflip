@@ -5,11 +5,16 @@ const flipped = () => {
 
 // chains mutation observers to allow DOM changes to occur (e.g await popups) before trying to query nonexistent DOM elements
 // could (and probably should) be refactored a reasonable amount
+//
+// this can be done via the GraphQL API but i dont think twitch would like that very much :)
 export const predict = () => {
 	let stageDObserving: boolean = false;
 
 	const res = new Promise((resolve, reject) => {
 		const startA = (noObserve: boolean = false) => {
+
+            // if the channel points popup is already visible, we call funcA() directly as we
+            // won't trigger the observer if no DOM mutations are actually occurring
 			const observerA = new MutationObserver((_) => {
 				observerA.disconnect();
                 funcA();
@@ -30,7 +35,7 @@ export const predict = () => {
                     console.info('Channel points:', points);
 					console.info('[+] A okay -> starting B');
 
-					// prop drilling 2.0(tm): drill the points count down through the mutation observer chain
+					// backend prop drilling: pass point count const all the way down through the mutation observer chain
 					startB(points as string); // points COULD be `<string | undefined>` here but SURELY this wont cause problems
 				} else {
 					reject(
@@ -42,8 +47,9 @@ export const predict = () => {
 
             if (!noObserve) {
 			// we might prefer to specifically observe the popup, but we work with document.body for now to avoid
-			// adding too much complexity similarly, i dont think we have to configure observation for all of those options,
-			// but it doesn't seem to be causing issues
+			// adding too much upfront complexity
+            // similarly, i dont think we have to configure observation for all of those options,
+			// but it doesn't seem to be causing issues and i don't really know what they are lol
 			    observerA.observe(document.body, {
 			    	childList: true,
 			    	subtree: true,
@@ -203,11 +209,10 @@ export const predict = () => {
 		    channelPointsButton.click();
         }
 
-
 		startA(alreadyOpen ? true : false); // start the observer chain
 
 		// we should be able to run the required functions in like, a handful
-        // of seconds at most
+        // of seconds at most, if time to run > 10 seconds we reject and stop trying
 		setTimeout(() => {
 			reject(
 				'(10 seconds elapsed since DOM interaction start) -> Timeout exceeded: DOM mutations expected to occur much faster :('
@@ -220,8 +225,9 @@ export const predict = () => {
 
 chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
 	if (req.action === 'predict') {
-        // wait out the slight delay so that the chat message can trigger
-        // the streamelements function (or whatever idk)
+
+        // delay DOM interaction so that the chat message can trigger the streamelements
+        // function (or whatever happens on kori's backend idk)
         setTimeout(() => {
 		    predict()
 			.then((res) => {

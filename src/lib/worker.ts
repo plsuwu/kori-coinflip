@@ -13,7 +13,7 @@ export interface UserInfo {
 
 export const gramble = (debug: boolean = false) => {
 	// double check that we intend to gramble before actually grambling
-    // should only occur when manually clicking in debug mode
+	// should only occur when manually clicking in debug mode
 	chrome.runtime.sendMessage({ action: 'curr_state' }, (res) => {
 		if (res.state === false && !debug) {
 			console.log('[x] Gramble disabled, not grambling due to this.');
@@ -33,10 +33,12 @@ const predictor = () => {
 			return;
 		}
 
-        // if multiple kori tabs are open, use the first one
-        //
-        // eventually want to try injecting ourselves into a different kori tab on hitting a
-        // `chrome.runtime.lastError`, though this probably shouldn't happen
+		/* *
+        * if multiple kori tabs are open, use the first one
+
+		* eventually we might want to try injecting ourselves into a different kori tab (if available)
+        * if we hit a `chrome.runtime.lastError`, though this generally speaking shouldn't happen
+        * */
 		const kori = tabs.filter((tab) => tab.url === STREAM_LINK)[0];
 
 		if (kori) {
@@ -80,8 +82,15 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
 	chrome.storage.local.get(['state', 'auth', 'user'], (res) => {
 		chrome.action.setIcon({ path: getIconPath(res.state) });
-		// if (res.auth) {
-		//     // re-validate
+
+		console.log('[*] Startup -> state of autoflip: ', res.state);
+		// if (res.state) {
+		// 	chrome.runtime.sendMessage({ action: 'heartbeat' }, (res) => {
+		// 		console.log('[*] Healthcheck: ', res.health_check);
+		// 	});
+		// 	// if (res.auth) {
+		// 	//     // re-validate
+		// 	// }
 		// }
 	});
 });
@@ -93,39 +102,79 @@ const toggleState = (curr: boolean) => {
 
 // make this a switch statement lmaooo
 chrome.runtime.onMessage.addListener((req, _, next) => {
-
-    // runs the main gramble action
+	// runs the main gramble action
 	if (req.action === 'gramble') {
 		console.log('[+] Flipping...');
 		gramble();
 	}
 
-    // debugger value getter & setter
+	if (req.action === 'heartbeat') {
+		const checkHealth = async () => {
+			setTimeout(() => {
+				chrome.storage.local.get(['state', 'debug'], (res) => {
+					const curr_state = res.state;
+					const health = ws.ready();
+					if (res.debug) {
+						console.log(
+							`[?] sock ok? -> ${health}, state enabled? -> ${curr_state}`
+						);
+					}
+
+					if (!health) {
+						if (curr_state) {
+							console.log(
+								'[!] Possible issue with socket, cycling state to reset...'
+							);
+							chrome.storage.local.set({ state: false });
+
+							// wait for sock state then flip
+							setTimeout(() => {
+								chrome.storage.local.set({ state: true });
+							}, 100);
+
+							console.log('[*] Sock state cycled.');
+						} else {
+							console.log(
+								'[?] Probable intent, sock in expected state.'
+							);
+							return;
+						}
+					} else {
+						if (res.debug) {
+							console.log('[+] Health ok.');
+						}
+
+						checkHealth();
+					}
+				});
+			}, 60_000); // 1 min
+		};
+
+		checkHealth().then((_res) => {
+			next({
+				status: 'complete',
+				healthcheck: 'running until intentional close',
+			});
+		});
+	}
+
+	// debugger value getter & setter
 	if (req.action === 'get_debug') {
-        chrome.storage.local.get(['debug'], (res) => {
-            next({ status: 'complete', debug: res.debug });
-        })
-    }
-    if (req.action === 'set_debug') {
-        chrome.storage.local.get(['debug'], (res) => {
-            const newDebug = res.debug ? false : true;
-            chrome.storage.local.set({ debug: newDebug });
+		chrome.storage.local.get(['debug'], (res) => {
+			next({ status: 'complete', debug: res.debug });
+		});
+	}
+	if (req.action === 'set_debug') {
+		chrome.storage.local.get(['debug'], (res) => {
+			const newDebug = res.debug ? false : true;
+			chrome.storage.local.set({ debug: newDebug });
 
-            next({ status: 'complete', debug: newDebug });
-        });
-    }
+			next({ status: 'complete', debug: newDebug });
+		});
+	}
 
-    if (req.action === 'set_debug') {
-        chrome.storage.local.get(['debug'], (res) => {
-            const newDebug = res.debug ? false : true;
-            chrome.storage.local.set({ debug: newDebug });
-
-            next({ status: 'complete', debug: newDebug });
-        });
-    }
-
-    // sock self-closed checker (if the socket was closed by the socket handler itself
-    // we want this to reflect in the extension's state
+	// sock self-closed checker (if the socket was closed by the socket handler itself
+	// we want this to reflect in the extension's state
 	if (req.action === 'sock_closed') {
 		chrome.storage.local.get(['state'], (res) => {
 			if (res.state != null && res.state === false) {
@@ -152,7 +201,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		});
 	}
 
-    // extension state (enabled/disabled) getter & setter
+	// extension state (enabled/disabled) getter & setter
 	if (req.action === 'curr_state') {
 		chrome.storage.local.get(['state'], (res) => {
 			if (res.state != null) {
@@ -171,7 +220,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		});
 	}
 
-    // authentication/twitch oauth flow and credential storage
+	// authentication/twitch oauth flow and credential storage
 	if (req.action === 'auth') {
 		chrome.storage.local.get(['auth', 'auth_expiry'], (res) => {
 			const writeValidity = (auth: string) => {
@@ -180,7 +229,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 						let message: string =
 							'Unhandled error, please try again momentarily.';
 
-                        // report basic login errors
+						// report basic login errors
 						switch (res.message?.status) {
 							case 401:
 								message =
@@ -204,8 +253,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 					const user = res.user;
 
 					// get expiry to work when time permits:
-					// const auth_expiry = Date.now() + 3_600_000; // revalidate each hour: 3,600,000ms = ~60mins
-					const auth_expiry = Date.now() + 1;
+					const auth_expiry = Date.now() + 3_600_000; // revalidate each hour: 3,600,000ms = ~60mins
 
 					// could do a user color for the UI if/when bothered
 
@@ -224,7 +272,7 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 				});
 			};
 
-            // report errors or otherwise undefined behavior
+			// report errors or otherwise undefined behavior
 			if (!res.auth || res.auth === 'error') {
 				chrome.identity.launchWebAuthFlow(
 					{ url: auth_uri, interactive: true },
@@ -292,8 +340,8 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 		);
 	}
 
-    // report the logout to twitch API to stop the token from being used in
-    // future sessions
+	// report the logout to twitch API to stop the token from being used in
+	// future sessions
 	if (req.action === 'revoke') {
 		chrome.storage.local.get(['auth', 'user'], (res) => {
 			revoke(res.auth).then((res) => {
@@ -315,9 +363,11 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 // runtime listener for changed `{ key: value }` pairs in chrome's storage
 chrome.storage.onChanged.addListener((changes, namespace) => {
 	if (namespace === 'local') {
-		// when a new enabled/disabled state is written to localstorage, check its boolean value and
+
+		// when a new state is written to localstorage, check its boolean value and
 		// run the relevant handler for that state
 		if (changes.state?.newValue != null) {
+
 			// guard for non-bool state and reset to a non-destructive value
 			if (typeof changes.state?.newValue !== typeof true) {
 				console.error(
@@ -329,13 +379,14 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 				return;
 			}
 
-			// set the extension icon to match the toggled state
+			// set the extension icon to match the new state
 			chrome.action.setIcon(
 				{
 					path: getIconPath(changes.state.newValue),
 				},
 				() => {}
 			);
+
 			// run socket (dis)connection function based on state truthiness
 			changes.state.newValue ?
 				chrome.storage.local.get(['user', 'auth'], (res) => {
@@ -352,25 +403,34 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 						channel
 					);
 
-					// ws.connect promise holds a loop that resolves when a `!brb` is received.
-                    // when the ws.connect function resolves, we call `predictor()` before we disconnect
-                    // & re-connect by calling the ws.connect loop again. this loops until the extension state is
-                    // toggled false.
-					//
-					// 1/3rd of this program (and chrome extension javascript generally) is wrapping chrome
-                    // runtime messages in `.then(() ...` callbacks, which is making it very difficult to return
-                    // values from async function calls >:(
+					/* *
+                    * ws.connect promise holds a loop that resolves when a `!brb` is received.
+					* when the ws.connect function resolves, we call `predictor()` before we disconnect
+					* & re-connect by calling the ws.connect loop again. this loops until the extension state is
+					* toggled false.
+
+					* 1/3rd of this program (and chrome extension javascript generally) is wrapping chrome
+					* runtime messages in `.then(() ...` callbacks, which is making it very difficult to return
+					* values from async function calls >:(
+                    * */
 					const loop = () => {
+						ws.connect({ user, token, channel }).then((ws_res) => {
+							console.log(ws_res);
+
+							predictor();
+							ws.disconnect().then((_) => {
+								loop();
+							});
+						});
+
+                        // check websocket and try to reset if weirdness is found - i think something is
+                        // leaking memory but i don't know where or what??
 						chrome.storage.local.get(['state'], (res) => {
 							if (res.state) {
-								ws.connect({ user, token, channel }).then(
-									(ws_res) => {
-										console.log(ws_res);
-
-										predictor();
-										ws.disconnect().then((_) => {
-											loop();
-										});
+								chrome.runtime.sendMessage(
+									{ action: 'heartbeat' },
+									(r) => {
+										console.log(r);
 									}
 								);
 							}

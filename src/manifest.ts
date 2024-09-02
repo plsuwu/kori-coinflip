@@ -46,7 +46,13 @@ const manifest = defineManifest(async () => ({
 	],
 	action: {
 		default_popup: 'index.html',
-		default_icon: 'disabled/insanerac_d9.png',
+		// default_icon: {
+        icons: {
+            '16': 'disabled/INSANERAC01_16x16.png',
+            '32': 'disabled/INSANERAC01_32x32.png',
+            '48': 'disabled/INSANERAC01_48x48.png',
+            '128': 'disabled/INSANERAC01_128x128.png',
+        }
 	},
 	web_accessible_resources: [
 		{

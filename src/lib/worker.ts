@@ -68,9 +68,12 @@ const getIconPath = (state: boolean): string => {
 	const type = state ? 'enabled' : 'disabled';
 
 	// index random koriINSANERACC frame
-	const item = Math.ceil(Math.random() * 11);
+	let item = Math.ceil(Math.random() * 11).toString();
+    if (item.length < 2) {
+        item = `0${item}`;
+    }
 
-	return `${type}/insanerac_${type[0]}${item}.png`;
+	return `${type}/INSANERAC${item}_128x128.png`;
 };
 
 chrome.runtime.onInstalled.addListener(() => {

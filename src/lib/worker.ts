@@ -3,6 +3,12 @@ import { validate, revoke } from './content_scripts/requests';
 import WebSocketUtil from './content_scripts/socket/websocket';
 import './content_scripts/autopredict.tsx';
 
+interface IPoints {
+	status: string;
+	message?: string;
+	channelPoints?: string;
+}
+
 export interface UserInfo {
 	client_id: string;
 	expires_in: number;
@@ -24,6 +30,46 @@ export const gramble = (debug: boolean = false) => {
 	});
 };
 
+const getChannelPoints = async () => {
+	let points: string;
+	chrome.tabs.query({}, (tabs) => {
+		if (tabs.every((t) => t.url !== STREAM_LINK)) {
+			console.log('[x] No Kori tabs open, cannot fetch points.');
+			return { status: 'error', message: 'no kori tab open' };
+		}
+
+		const kori = tabs.filter((tab) => tab.url === STREAM_LINK)[0];
+		console.log(kori);
+
+		if (kori) {
+			chrome.tabs.sendMessage(
+				kori.id as number,
+				{ action: 'get_points' },
+				(res) => {
+					if (chrome.runtime.lastError) {
+						console.error(
+							'Error sending message:',
+							chrome.runtime.lastError
+						);
+						return {
+							status: 'error',
+							message: chrome.runtime.lastError,
+						};
+					}
+					console.log('[!] RES IN GCP:', res);
+					if (res.channelPoints) {
+						chrome.storage.local.set({ channelPoints: res });
+						return res.channelPoints;
+					}
+					// return { status: 'complete', channel_points: res };
+					// return res;
+					// return res.points;
+				}
+			);
+		}
+	});
+};
+
 const predictor = () => {
 	// query all tabs for one containing our target url and the predict action
 	// message to the content script in that tab
@@ -36,7 +82,7 @@ const predictor = () => {
 		/* *
         * if multiple kori tabs are open, use the first one
 
-		* eventually we might want to try injecting ourselves into a different kori tab (if available)
+        * eventually we might want to try injecting ourselves into a different kori tab (if available)
         * if we hit a `chrome.runtime.lastError`, though this generally speaking shouldn't happen
         * */
 		const kori = tabs.filter((tab) => tab.url === STREAM_LINK)[0];
@@ -69,9 +115,9 @@ const getIconPath = (state: boolean): string => {
 
 	// index random koriINSANERACC frame
 	let item = Math.ceil(Math.random() * 11).toString();
-    if (item.length < 2) {
-        item = `0${item}`;
-    }
+	if (item.length < 2) {
+		item = `0${item}`;
+	}
 
 	return `${type}/INSANERAC${item}_128x128.png`;
 };
@@ -83,7 +129,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onStartup.addListener(() => {
-	chrome.storage.local.get(['state', 'auth', 'user'], (res) => {
+	chrome.storage.local.get(['state', 'auth', 'user', 'points'], (res) => {
 		chrome.action.setIcon({ path: getIconPath(res.state) });
 
 		console.log('[*] Startup -> state of autoflip: ', res.state);
@@ -109,6 +155,51 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 	if (req.action === 'gramble') {
 		console.log('[+] Flipping...');
 		gramble();
+	}
+
+	if (req.action === 'get_points') {
+		chrome.storage.local.get(['channel_points'], (res) => {
+			chrome.tabs.query({}, (tabs) => {
+				const kori = tabs.filter((tab) => tab.url === STREAM_LINK)[0];
+
+				if (kori) {
+					chrome.tabs.sendMessage(
+						kori.id as number,
+						{ action: 'get_points' },
+						(res) => {
+							if (chrome.runtime.lastError) {
+								console.error(
+									'Error sending message:',
+									chrome.runtime.lastError
+								);
+								return {
+									status: 'error',
+									message: chrome.runtime.lastError,
+								};
+							}
+							if (res.channelPoints) {
+								chrome.storage.local.set({
+									channel_points: res.channelPoints,
+								});
+								next({
+									status: 'complete',
+									channel_points: res.channelPoints,
+								});
+							}
+						}
+					);
+				} else if (!kori) {
+					chrome.storage.local.get(['channel_points'], (res) => {
+						if (res.channel_points) {
+							next({
+								status: 'complete',
+								channel_points: res.channel_points,
+							});
+						}
+					});
+				}
+			});
+		});
 	}
 
 	if (req.action === 'heartbeat') {
@@ -316,6 +407,8 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 				console.log('[+] Revalidating auth.');
 				writeValidity(res.auth as string);
 			}
+
+			// get channel points and store so we can write to UI
 		});
 	}
 
@@ -366,11 +459,9 @@ chrome.runtime.onMessage.addListener((req, _, next) => {
 // runtime listener for changed `{ key: value }` pairs in chrome's storage
 chrome.storage.onChanged.addListener((changes, namespace) => {
 	if (namespace === 'local') {
-
 		// when a new state is written to localstorage, check its boolean value and
 		// run the relevant handler for that state
 		if (changes.state?.newValue != null) {
-
 			// guard for non-bool state and reset to a non-destructive value
 			if (typeof changes.state?.newValue !== typeof true) {
 				console.error(
@@ -408,13 +499,13 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 
 					/* *
                     * ws.connect promise holds a loop that resolves when a `!brb` is received.
-					* when the ws.connect function resolves, we call `predictor()` before we disconnect
-					* & re-connect by calling the ws.connect loop again. this loops until the extension state is
-					* toggled false.
+                    * when the ws.connect function resolves, we call `predictor()` before we disconnect
+                    * & re-connect by calling the ws.connect loop again. this loops until the extension state is
+                    * toggled false.
 
-					* 1/3rd of this program (and chrome extension javascript generally) is wrapping chrome
-					* runtime messages in `.then(() ...` callbacks, which is making it very difficult to return
-					* values from async function calls >:(
+                    * 1/3rd of this program (and chrome extension javascript generally) is wrapping chrome
+                    * runtime messages in `.then(() ...` callbacks, which is making it very difficult to return
+                    * values from async function calls >:(
                     * */
 					const loop = () => {
 						ws.connect({ user, token, channel }).then((ws_res) => {
@@ -426,8 +517,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 							});
 						});
 
-                        // check websocket and try to reset if weirdness is found - i think something is
-                        // leaking memory but i don't know where or what??
+						// check websocket and try to reset if weirdness is found - i think something is
+						// leaking memory but i don't know where or what??
 						chrome.storage.local.get(['state'], (res) => {
 							if (res.state) {
 								chrome.runtime.sendMessage(

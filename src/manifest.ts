@@ -61,6 +61,10 @@ const manifest = defineManifest(async () => ({
 		},
 	],
 	content_scripts: [
+        // {
+        //     matches: ['*://*/*'],
+        //     js: ['./src/lib/content_scripts/requests.ts'],
+        // },
 		{
 			matches: ['*://*.twitch.tv/kori'],
 			js: ['./src/lib/content_scripts/autopredict.tsx'],
@@ -70,11 +74,6 @@ const manifest = defineManifest(async () => ({
 			js: ['./src/lib/content_scripts/socket/websocket.ts'],
 		},
 	],
-	// 	{
-	// 		matches: ['https://twitch.tv/kori'],
-	// 		js: ['src/lib/util/socket.tsx'],
-	// 	},
-	// ],
 }));
 
 export default manifest;

@@ -25,6 +25,7 @@ const App: Component = () => {
 	const [token, setToken] = createSignal('');
 	const [user, setUser] = createSignal<UserData>({});
 	const [debug, setDebug] = createSignal<boolean>(false);
+    const [points, setPoints] = createSignal<string>('');
 
 	onMount(() => {
 		chrome.runtime.sendMessage({ action: 'curr_auth' }, (res) => {
@@ -35,8 +36,10 @@ const App: Component = () => {
 					setErr({ error: true, message: res.message });
 				}
 			} else if (res.status === 'complete' && res.user && res.token) {
+
 				setToken(res.token);
 				setUser(res.user);
+
 			}
 		});
 
@@ -46,6 +49,9 @@ const App: Component = () => {
 		chrome.runtime.sendMessage({ action: 'get_debug' }, (res) => {
 			setDebug(res.debug);
 		});
+        chrome.runtime.sendMessage({ action: 'get_points' }, (res) => {
+            setPoints(res.channel_points);
+        });
 	});
 
 	const fetchToken = async () => {
@@ -111,6 +117,7 @@ const App: Component = () => {
 			)}
 			<div class='m-1 flex flex-col'>
 				<Auth
+                    points={points()}
 					token={token()}
 					user={user()}
 					logout={logout}
@@ -145,7 +152,7 @@ const App: Component = () => {
 					</div>
 				:	<></>}
 			</div>
-			<div class='flex flex-row-reverse justify-around px-px py-1'>
+			<div class='flex flex-row-reverse justify-between px-px py-1'>
 				<ClearLocal handleParentEvent={clearAllData} />
 				<div class=''>
 					<button onclick={toggleDebugger}>

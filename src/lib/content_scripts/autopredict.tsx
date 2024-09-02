@@ -7,20 +7,19 @@ const flipped = () => {
 // could (and probably should) be refactored a reasonable amount
 //
 // this can be done via the GraphQL API but i dont think twitch would like that very much :)
-export const predict = () => {
+export const predict = (pointsOnly: boolean = false) => {
 	let stageDObserving: boolean = false;
 
 	const res = new Promise((resolve, reject) => {
 		const startA = (noObserve: boolean = false) => {
-
-            // if the channel points popup is already visible, we call funcA() directly as we
-            // won't trigger the observer if no DOM mutations are actually occurring
+			// if the channel points popup is already visible, we call funcA() directly as we
+			// won't trigger the observer if no DOM mutations are actually occurring
 			const observerA = new MutationObserver((_) => {
 				observerA.disconnect();
-                funcA();
+				funcA();
 			});
 
-            const funcA = () => {
+			const funcA = () => {
 				const channelPointsQuery = document.querySelector(
 					'button[aria-label*="Click to learn how to earn more"]'
 				) as HTMLButtonElement;
@@ -32,8 +31,22 @@ export const predict = () => {
 						?.filter((val) => val != '')[0]
 						.replace(/,/g, '');
 
-                    console.info('Channel points:', points);
+					console.info('Channel points:', points);
 					console.info('[+] A okay -> starting B');
+
+					if (pointsOnly) {
+						let close = document.querySelector(
+							'button[aria-label="Close"]'
+						) as HTMLButtonElement;
+						if (close) {
+							close.click();
+
+							console.info(
+								'[*] All stages executed without issue.'
+							);
+							return resolve(points);
+						}
+					}
 
 					// backend prop drilling: pass point count const all the way down through the mutation observer chain
 					startB(points as string); // points COULD be `<string | undefined>` here but SURELY this wont cause problems
@@ -42,25 +55,22 @@ export const predict = () => {
 						'Cannot find the required DOM element for Observer A.'
 					);
 				}
+			};
 
-            }
-
-            if (!noObserve) {
-			// we might prefer to specifically observe the popup, but we work with document.body for now to avoid
-			// adding too much upfront complexity
-            // similarly, i dont think we have to configure observation for all of those options,
-			// but it doesn't seem to be causing issues and i don't really know what they are lol
-			    observerA.observe(document.body, {
-			    	childList: true,
-			    	subtree: true,
-			    	attributes: true,
-			    });
-            } else {
-
-                // start immediate if already mutated
-                funcA();
-            }
-
+			if (!noObserve) {
+				// we might prefer to specifically observe the popup, but we work with document.body for now to avoid
+				// adding too much upfront complexity
+				// similarly, i dont think we have to configure observation for all of those options,
+				// but it doesn't seem to be causing issues and i don't really know what they are lol
+				observerA.observe(document.body, {
+					childList: true,
+					subtree: true,
+					attributes: true,
+				});
+			} else {
+				// start immediate if already mutated
+				funcA();
+			}
 		};
 
 		const startB = (channelPoints: string) => {
@@ -196,23 +206,23 @@ export const predict = () => {
 
 		if (!channelPointsButton) {
 			// guard by returning the rejection
-			return reject('Cannot find channel points toggle popup button.');
+			reject('Cannot find channel points toggle popup button.');
 		}
 
-        const alreadyOpen = document.querySelector(
-            'div[aria-labelledby="channel-points-reward-center-header"]'
-        )as HTMLDivElement;
+		const alreadyOpen = document.querySelector(
+			'div[aria-labelledby="channel-points-reward-center-header"]'
+		) as HTMLDivElement;
 
-        console.log('BUTTONS ON SCREEN?: ', alreadyOpen, channelPointsButton);
+		console.log('BUTTONS ON SCREEN?: ', alreadyOpen, channelPointsButton);
 
-        if (!alreadyOpen) {
-		    channelPointsButton.click();
-        }
+		if (!alreadyOpen) {
+			channelPointsButton.click();
+		}
 
 		startA(alreadyOpen ? true : false); // start the observer chain
 
 		// we should be able to run the required functions in like, a handful
-        // of seconds at most, if time to run > 10 seconds we reject and stop trying
+		// of seconds at most, if time to run > 10 seconds we reject and stop trying
 		setTimeout(() => {
 			reject(
 				'(10 seconds elapsed since DOM interaction start) -> Timeout exceeded: DOM mutations expected to occur much faster :('
@@ -223,21 +233,34 @@ export const predict = () => {
 	return res;
 };
 
-chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
-	if (req.action === 'predict') {
-
-        // delay DOM interaction so that the chat message can trigger the streamelements
-        // function (or whatever happens on kori's backend idk)
-        setTimeout(() => {
-		    predict()
+chrome.runtime.onMessage.addListener((req, _sender, next) => {
+	if (req.action === 'get_points') {
+		predict(true)
 			.then((res) => {
-				sendResponse({ status: 'complete', channelPoints: res });
+                console.log('got res: ', res);
+				next({ status: 'complete', channelPoints: res });
 			})
-			.catch((error) => {
-				console.error('[-] Error in predict fn:', error);
-				sendResponse({ status: 'error', message: error });
+			.catch((err) => {
+				if (err.message !== 'document is not defined') {
+					console.error('[-] Error in predict fn:', err);
+					next({ status: 'error', message: err });
+				}
 			});
-        }, 1500)
+	}
+
+	if (req.action === 'predict') {
+		// delay DOM interaction so that the chat message can trigger the streamelements
+		// function (or whatever happens on kori's backend idk)
+		setTimeout(() => {
+			predict()
+				.then((res) => {
+					next({ status: 'complete', channelPoints: res });
+				})
+				.catch((error) => {
+					console.error('[-] Error in predict fn:', error);
+					next({ status: 'error', message: error });
+				});
+		}, 1500);
 	}
 
 	return true;

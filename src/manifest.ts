@@ -37,18 +37,21 @@ import { defineManifest } from '@crxjs/vite-plugin';
 const manifest = defineManifest(async () => ({
 	manifest_version: 3,
 	name: 'kori coinflip',
-	version: '0.1.1',
+	version: '0.1.3',
 	background: { service_worker: './src/lib/worker.ts' },
 	permissions: ['storage', 'identity', 'tabs', 'scripting'],
-	host_permissions: ['*://*/*'],
+	host_permissions: [
+		'*://*.chromiumapp.org/*',
+		'*://*.twitch.tv/*',
+	],
 	action: {
 		default_popup: 'index.html',
-		default_icon: 'public/disabled/insanerac_d9.png',
+		default_icon: 'disabled/insanerac_d9.png',
 	},
 	web_accessible_resources: [
 		{
-			resources: ['public/enabled/*', 'public/disabled/*'],
-			matches: ['*://*/*'],
+			resources: ['enabled/*', 'disabled/*'],
+			matches: ['*://*.chromiumapp.org/*'],
 		},
 	],
 	content_scripts: [

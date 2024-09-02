@@ -70,7 +70,7 @@ const getIconPath = (state: boolean): string => {
 	// index random koriINSANERACC frame
 	const item = Math.ceil(Math.random() * 11);
 
-	return `public/${type}/insanerac_${type[0]}${item}.png`;
+	return `${type}/insanerac_${type[0]}${item}.png`;
 };
 
 chrome.runtime.onInstalled.addListener(() => {
